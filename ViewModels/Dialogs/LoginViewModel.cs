@@ -1,0 +1,30 @@
+﻿using Prism.Dialogs;
+using ReactiveUI;
+using System;
+using System.Reactive;
+using System.Threading.Tasks;
+
+namespace OB.ViewModels.Dialogs
+{
+    public class LoginViewModel : IDialogAware
+    {
+        public DialogCloseListener RequestClose => throw new NotImplementedException();
+
+        public bool CanCloseDialog()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void OnDialogClosed()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void OnDialogOpened(IDialogParameters parameters)
+        {
+            throw new NotImplementedException();
+        }
+
+
+    }
+}
