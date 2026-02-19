@@ -32,6 +32,9 @@ namespace OB.ViewModels.Dialogs
 
         public void OnDialogOpened(IDialogParameters parameters) { }
 
+        // 新增事件，用于手动显示窗口时通知外部
+        public event EventHandler<ButtonResult> LoginClosed;
+
         private bool CanLogin() => !string.IsNullOrWhiteSpace(UserName) && !string.IsNullOrWhiteSpace(Password);
 
         public DelegateCommand LoginCommand => new DelegateCommand(Login, CanLogin)
@@ -40,17 +43,17 @@ namespace OB.ViewModels.Dialogs
 
         private void Login()
         {
-            // 这里替换为实际的验证逻辑（如调用数据库）
+            // 替换为实际的验证逻辑
             if (UserName == "admin" && Password == "admin")
             {
-                var parameters = new DialogParameters();
-                // 可以返回用户信息等数据
-                RequestClose.Invoke(parameters, ButtonResult.OK);
+                // 触发事件（手动模式）
+                LoginClosed?.Invoke(this, ButtonResult.OK);
+                // 触发 Prism 对话框关闭（自动模式）
+                RequestClose.Invoke(new DialogParameters(), ButtonResult.OK);
             }
             else
             {
-                // 可在此显示错误提示，例如通过对话框服务或弹窗
-                // 简单起见，这里不处理，仅演示
+                // 登录失败，可显示错误提示（此处略）
             }
         }
 
@@ -58,6 +61,7 @@ namespace OB.ViewModels.Dialogs
 
         private void Cancel()
         {
+            LoginClosed?.Invoke(this, ButtonResult.Cancel);
             RequestClose.Invoke(null, ButtonResult.Cancel);
         }
     }
