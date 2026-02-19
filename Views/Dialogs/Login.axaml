@@ -33,18 +33,18 @@
           <RowDefinition Height="*" />
         </Grid.RowDefinitions>
              <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="Auto" />
-          <ColumnDefinition Width="Auto" />
-                 </Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="*" />
+         </Grid.ColumnDefinitions>
         <!-- 應用圖標和標題 -->
-        <StackPanel Grid.Row="0" HorizontalAlignment="Center" Margin="0,0,0,30" >
+        <StackPanel Grid.Row="0" HorizontalAlignment="Center" Margin="0,0,0,30" Grid.ColumnSpan="2" >
           <Border Width="64" Height="64" 
                   Background="#4F46E5" 
                   CornerRadius="32"
                   Margin="0,0,0,10"
                   
 />
-          <TextBlock Text="Welcome Back" 
+          <TextBlock Text="拓脈匙目標檢測系統" 
                      FontSize="28" 
                      FontWeight="Bold"
                      Foreground="#1E293B"
@@ -57,7 +57,7 @@
         </StackPanel>
 
         <!-- 用戶名輸入框 -->
-        <StackPanel Grid.Row="1" Margin="0,0,0,20">
+        <StackPanel Grid.Row="1" Margin="0,0,0,20" Grid.ColumnSpan="2">
           <TextBlock Text="用戶名" 
                      FontSize="13"
                      FontWeight="Medium"
@@ -65,7 +65,6 @@
                      Margin="0,0,0,5"/>
           <Border Background="#F1F5F9" CornerRadius="8" Padding="2">
             <TextBox Text="{Binding UserName, Mode=TwoWay}"
-                     Watermark="username@example.com"
                      FontSize="14"
                      Background="Transparent"
                      BorderThickness="0"
@@ -82,7 +81,7 @@
         </StackPanel>
 
         <!-- 密碼輸入框 -->
-        <StackPanel Grid.Row="2" Margin="0,0,0,10">
+        <StackPanel Grid.Row="2" Margin="0,0,0,10" Grid.ColumnSpan="2">
           <Grid>
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="*"/>
@@ -109,7 +108,6 @@
           </Grid>
           <Border Background="#F1F5F9" CornerRadius="8" Padding="2">
             <TextBox Text="{Binding Password, Mode=TwoWay}"
-                     Watermark="????????"
                      FontSize="14"
                      Background="Transparent"
                      BorderThickness="0"
@@ -162,8 +160,9 @@
         </Button>
 
           <Button Grid.Row="4"
+                  Margin="20,0,0,0"
                   Grid.Column="1"
-                Command="{Binding LoginCommand}"
+                Command="{Binding ShowSetCommand}"
                 Content="設置"
                 FontSize="15"
                 FontWeight="SemiBold"
@@ -191,25 +190,5 @@
       </Grid>
     </Border>
 
-    <!-- 取消按鈕（右上角） -->
-    <Button Command="{Binding CancelCommand}"
-            Content="✕"
-            FontSize="18"
-            Background="Transparent"
-            BorderThickness="0"
-            Foreground="#64748B"
-            Width="40" Height="40"
-            CornerRadius="20"
-            HorizontalAlignment="Right"
-            VerticalAlignment="Top"
-            Margin="20"
-            Cursor="Hand">
-      <Button.Styles>
-        <Style Selector="Button:pointerover">
-          <Setter Property="Background" Value="#F1F5F9"/>
-          <Setter Property="Foreground" Value="#1E293B"/>
-        </Style>
-      </Button.Styles>
-    </Button>
   </Grid>
 </UserControl>

@@ -1,6 +1,7 @@
-﻿using System;
-using Avalonia;
+﻿using Avalonia;
+using OB.Views;
 using ReactiveUI.Avalonia;
+using System;
 
 namespace OB
 {
@@ -20,5 +21,25 @@ namespace OB
                 .WithInterFont()
                 .LogToTrace()
                 .UseReactiveUI();
+
+        //private void ShowLoginDialog(DesktopLifetime desktopLifetime)
+        //{
+        //    var dialogService = Container.Resolve<IDialogService>();
+        //    var parameters = new DialogParameters();
+        //    dialogService.ShowDialog("Login", parameters, r =>
+        //    {
+        //        if (r?.Result == ButtonResult.OK)
+        //        {
+        //            var mainWin = Container.Resolve<MainWin>();
+        //            desktopLifetime.MainWindow = mainWin;
+        //            mainWin.Show();
+        //        }
+        //        else
+        //        {
+        //            desktopLifetime.Shutdown();
+        //        }
+        //    });
+        //}
+
     }
 }
