@@ -1,4 +1,5 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
@@ -9,7 +10,6 @@
   <ItemGroup>
     <Content Include="favicon.ico" />
   </ItemGroup>
-
   <ItemGroup>
     <None Include="C:\Users\20250923\Desktop\favicon.ico">
       <Pack>True</Pack>
@@ -31,17 +31,32 @@
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.3" />
     <PackageReference Include="Prism.DryIoc.Avalonia" Version="9.0.537.11130" />
     <PackageReference Include="ReactiveUI.Avalonia" Version="11.3.8" />
+	  <PackageReference Include="System.ServiceModel.Primitives" Version="8.0.0" />
+	  <PackageReference Include="System.ServiceModel.Http" Version="8.0.0" />
+	  <PackageReference Include="System.ServiceModel.NetTcp" Version="8.0.0" />
   </ItemGroup>
-
   <ItemGroup>
     <AvaloniaXaml Update="App.axaml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </AvaloniaXaml>
-
   </ItemGroup>
   <ItemGroup>
+    <Compile Update="OB.Designer.cs">
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>OB.settings</DependentUpon>
+    </Compile>
     <Compile Update="Views\Dialogs\Login.axaml.cs">
       <DependentUpon>Login.axaml</DependentUpon>
     </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="System.ServiceModel.NetTcp" Version="8.*" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="OB.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>OB.Designer.cs</LastGenOutput>
+    </None>
   </ItemGroup>
 </Project>
