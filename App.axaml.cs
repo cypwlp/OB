@@ -59,7 +59,7 @@ namespace OB
                 if (result.Result == ButtonResult.OK)
                 {
                     // 登录成功，获取传递的 DBTools 实例
-                    if (result.Parameters.TryGetValue<DBTools>("dbtools", out var dbtools))
+                    if (result.Parameters.TryGetValue<RemoteDBTools>("dbtools", out var dbtools))
                     {
                         var mainWin = Container.Resolve<MainWin>();
                         if (mainWin.DataContext is MainViewModel vm)

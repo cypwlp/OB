@@ -9,9 +9,26 @@ namespace OB.ViewModels.Dialogs
 {
     public class LoginViewModel : BindableBase, IDialogAware
     {
+        #region 字段
         private readonly IDialogService _dialogService;
         private string _userName;
         private string _password;
+        private string _server;
+        private int _selectedIndex;
+        #endregion
+
+        #region 屬性
+        public int SelectedIndex
+        {
+            get => _selectedIndex;
+            set
+            {
+                SetProperty(ref _selectedIndex, value);
+                RaisePropertyChanged(nameof(CurrentView));  // Raise to update content
+            }
+        }
+
+        public string CurrentView => SelectedIndex == 0 ? "Login" : "Settings";  // Used for template selection
 
         public string UserName
         {
@@ -25,23 +42,26 @@ namespace OB.ViewModels.Dialogs
             set => SetProperty(ref _password, value);
         }
 
+        public string Server
+        {
+            get => _server;
+            set => SetProperty(ref _server, value);
+        }
+        #endregion
+
         public LoginViewModel(IDialogService dialogService)
         {
             _dialogService = dialogService;
-
-            // 从设置中加载默认用户名
+            // 从设置中加载默认用户名和服务器
             var settings = OB.Default;
             UserName = settings.mUsername;
+            Server = settings.mServer;
         }
 
         public DialogCloseListener RequestClose { get; private set; }
-
         public string Title => "用户登录";
-
         public bool CanCloseDialog() => true;
-
         public void OnDialogClosed() { }
-
         public void OnDialogOpened(IDialogParameters parameters) { }
 
         private bool CanLogin() => !string.IsNullOrWhiteSpace(UserName) && !string.IsNullOrWhiteSpace(Password);
@@ -52,16 +72,8 @@ namespace OB.ViewModels.Dialogs
 
         private async Task LoginAsync()
         {
-            var settings = OB.Default;
-            string server = settings.mServer;
-            string database = settings.mDatabase;
-
-            // 根据服务器地址判断本地/远程（参照 VB.NET 逻辑）
-            bool isLocal = server.StartsWith("192.168.") || server.StartsWith("10.");
-
-            var dbtools = new DBTools(server, isLocal);
-            bool success = await dbtools.InitializeAsync(UserName, Password, database);
-
+            var dbtools = new RemoteDBTools("http://www.Topmix.net/dataservice/GetData.asmx","210.5.181.130", "TopmixData", UserName,Password);
+            bool success = await dbtools.InitializeAsync(UserName, Password, "TopmixData");
             if (success)
             {
                 var parameters = new DialogParameters();
@@ -76,19 +88,26 @@ namespace OB.ViewModels.Dialogs
         }
 
         public DelegateCommand CancelCommand => new DelegateCommand(Cancel);
+
         private void Cancel() => RequestClose.Invoke(null, ButtonResult.Cancel);
 
         public DelegateCommand ShowSetCommand => new DelegateCommand(ShowSet);
+
         private void ShowSet()
         {
-            _dialogService.ShowDialog("SetUrl", null, result =>
-            {
-                if (result.Result == ButtonResult.OK)
-                {
-                    // 更新用户名输入框为设置中保存的默认用户名
-                    UserName = OB.Default.mUsername;
-                }
-            });
+            SelectedIndex = 1;
+        }
+
+        public DelegateCommand SaveSettingsCommand => new DelegateCommand(SaveSettings);
+
+        private void SaveSettings()
+        {
+            var settings = OB.Default;
+            settings.mServer = Server;
+            settings.mUsername = UserName;
+            // 假设有Save方法来持久化设置
+            settings.Save(); // 如果OB.Default有Save方法，否则实现保存逻辑
+            SelectedIndex = 0; // 返回登录界面
         }
     }
 }
