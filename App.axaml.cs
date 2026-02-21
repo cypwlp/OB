@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Media;
+using OB.Models;
 using OB.Tools;
 using OB.ViewModels;
 using OB.ViewModels.Dialogs;
@@ -24,6 +25,8 @@ namespace OB
             containerRegistry.RegisterDialog<Login, LoginViewModel>();
             // 注册主窗口导航
             containerRegistry.RegisterForNavigation<MainWin, MainViewModel>();
+            containerRegistry.RegisterForNavigation<Home, HomeViewModel>();      // 对应 "Home"
+            containerRegistry.RegisterForNavigation<Settings, SettingsViewModel>(); // 对应 "Settings"
         }
 
         public override void OnFrameworkInitializationCompleted()
@@ -54,21 +57,23 @@ namespace OB
 
             var dialogService = Container.Resolve<IDialogService>();
 
-            dialogService.ShowDialog("Login", null, result =>
+            dialogService.ShowDialog("Login", null, async result =>
             {
                 if (result.Result == ButtonResult.OK)
                 {
                     // 登录成功，获取传递的 DBTools 实例
                     if (result.Parameters.TryGetValue<RemoteDBTools>("dbtools", out var dbtools))
                     {
-                        var mainWin = Container.Resolve<MainWin>();
-                        var vm = Container.Resolve<MainViewModel>(); // 通过容器解析 ViewModel
-                                                                     // 如果有需要传递的 DBTools，可以赋值给 ViewModel 的属性
-                                                                     // vm.DBTools = dbtools;
-                        mainWin.DataContext = vm; // 关键：手动设置 DataContext
-                        mainWin.Show();
-                        desktopLifetime.MainWindow = mainWin;
-                        splashWindow.Close();
+                        if (result.Parameters.TryGetValue<LogUserInfo>("LogUser", out var LogUser)) {
+                            var mainWin = Container.Resolve<MainWin>();
+                            var vm = Container.Resolve<MainViewModel>();
+                            vm.LogUser = LogUser;
+                            vm.RemoteDBTools = dbtools;                   
+                            mainWin.DataContext = vm;
+                            mainWin.Show();
+                            desktopLifetime.MainWindow = mainWin;
+                            splashWindow.Close();
+                        }
                     }
                     else
                     {

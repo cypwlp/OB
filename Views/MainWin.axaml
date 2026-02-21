@@ -6,13 +6,15 @@
         xmlns:dialogHostAvalonia="clr-namespace:DialogHostAvalonia;assembly=DialogHost.Avalonia"
         xmlns:controls="clr-namespace:Material.Styles.Controls;assembly=Material.Styles"
         xmlns:avalonia="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+xmlns:i="using:Avalonia.Xaml.Interactivity"
+xmlns:ia="using:Avalonia.Xaml.Interactions.Core"
         xmlns:vm="clr-namespace:OB.ViewModels"
         mc:Ignorable="d"
         d:DesignWidth="1200" d:DesignHeight="800"
         Title="MainWin"
         x:Class="OB.Views.MainWin"
         x:DataType="vm:MainViewModel"
-        d:DataContext="{x:Static vm:MainViewModel.DesignInstance}"
+
         MinWidth="800" MinHeight="600">
 
     <!-- 根容器：DialogHost（用于全局对话框） -->
@@ -45,6 +47,12 @@
                                      Background="Transparent"
 
                                      Classes="NoScroll">
+<i:Interaction.Behaviors>
+    <ia:EventTriggerBehavior EventName="SelectionChanged">
+        <ia:InvokeCommandAction Command="{Binding SelectMenuItemCommand}"
+                               /> 
+    </ia:EventTriggerBehavior>
+</i:Interaction.Behaviors>
                                 <ListBox.Styles>
                                     <!-- 菜单项样式：高度48，垂直居中，内边距16 -->
                                     <Style Selector="ListBoxItem">

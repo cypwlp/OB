@@ -70,5 +70,17 @@ namespace OB {
                 this["mUsername"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string mPassword {
+            get {
+                return ((string)(this["mPassword"]));
+            }
+            set {
+                this["mPassword"] = value;
+            }
+        }
     }
 }

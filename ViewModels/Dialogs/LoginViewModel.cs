@@ -1,7 +1,9 @@
-﻿using OB.Tools;
+﻿using OB.Models;
+using OB.Tools;
 using Prism.Commands;
 using Prism.Dialogs;
 using Prism.Mvvm;
+using RemoteService;
 using System;
 using System.Threading.Tasks;
 
@@ -15,9 +17,23 @@ namespace OB.ViewModels.Dialogs
         private string _password;
         private string _server;
         private int _selectedIndex;
+        private LogUserInfo logUser;
+        private RemoteService.LoginInfo logInfo;
         #endregion
 
         #region 屬性
+
+        public LogUserInfo LogUser
+        {  get => logUser; 
+           set => logUser = value;    
+        }
+
+        public RemoteService.LoginInfo LogInfo
+        {
+            get => logInfo;
+            set => logInfo = value;
+        }
+
         public int SelectedIndex
         {
             get => _selectedIndex;
@@ -52,6 +68,7 @@ namespace OB.ViewModels.Dialogs
         public LoginViewModel(IDialogService dialogService)
         {
             _dialogService = dialogService;
+            logUser = new LogUserInfo();
             // 从设置中加载默认用户名和服务器
             var settings = OB.Default;
             UserName = settings.mUsername;
@@ -72,12 +89,21 @@ namespace OB.ViewModels.Dialogs
 
         private async Task LoginAsync()
         {
-            var dbtools = new RemoteDBTools("http://www.Topmix.net/dataservice/GetData.asmx","210.5.181.130", "TopmixData", UserName,Password);
+            var dbtools = new RemoteDBTools("http://www.Topmix.net/dataservice/GetData.asmx", "210.5.181.130", "TopmixData", UserName, Password);
             bool success = await dbtools.InitializeAsync(UserName, Password, "TopmixData");
             if (success)
             {
                 var parameters = new DialogParameters();
+                //OB.Default.mUsername = UserName;
+                //OB.Default.mPassword = Password;
+                LogUser.UserName = UserName;
+                LogUser.Password = Password;
+                //LogUser.FullName = LogInfo.FullName;
+                //LogInfo = await dbtools.GetLoginInfoAsync();
+                LogInfo = await dbtools.GetLoginInfoAsync();
+                LogUser.FullName = LogInfo?.FullName ?? string.Empty;
                 parameters.Add("dbtools", dbtools);
+                parameters.Add("LogUser", LogUser);
                 RequestClose.Invoke(parameters, ButtonResult.OK);
             }
             else
@@ -98,16 +124,16 @@ namespace OB.ViewModels.Dialogs
             SelectedIndex = 1;
         }
 
-        public DelegateCommand SaveSettingsCommand => new DelegateCommand(SaveSettings);
+        //public DelegateCommand SaveSettingsCommand => new DelegateCommand(SaveSettings);
 
-        private void SaveSettings()
-        {
-            var settings = OB.Default;
-            settings.mServer = Server;
-            settings.mUsername = UserName;
-            // 假设有Save方法来持久化设置
-            settings.Save(); // 如果OB.Default有Save方法，否则实现保存逻辑
-            SelectedIndex = 0; // 返回登录界面
-        }
+        //private void SaveSettings()
+        //{
+        //    var settings = OB.Default;
+        //    settings.mServer = Server;
+        //    settings.mUsername = UserName;
+        //    // 假设有Save方法来持久化设置
+        //    settings.Save(); // 如果OB.Default有Save方法，否则实现保存逻辑
+        //    SelectedIndex = 0; // 返回登录界面
+        //}
     }
 }

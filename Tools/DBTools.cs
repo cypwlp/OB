@@ -36,8 +36,8 @@ namespace OB.Tools
         private int _timeOut = 30;
 
         // 用户信息（延迟加载）
-        private UserInfo _userInfo;
-        private AccountInfo _accountInfo;
+        //private UserInfo _userInfo;
+        //private AccountInfo _accountInfo;
 
         #endregion
 
@@ -72,31 +72,37 @@ namespace OB.Tools
         /// </summary>
         public string UPS => Encrypt($"{UserName}@{Password}", DateTime.Now.ToString("yyyyMMdd"));
 
+        public async Task<LoginInfo> GetLoginInfoAsync()
+        {
+            EnsureAuthenticated();
+            return await _soapClient.GetLoginInfoAsync();
+        }
+
         /// <summary>
         /// 用户详细信息（延迟加载）
         /// </summary>
-        public UserInfo UserInfo
-        {
-            get
-            {
-                if (_userInfo == null)
-                    InitializeUserInfoAsync().Wait();  // 同步等待，实际使用建议调用异步方法
-                return _userInfo;
-            }
-        }
+        //public UserInfo UserInfo
+        //{
+        //    get
+        //    {
+        //        if (_userInfo == null)
+        //            InitializeUserInfoAsync().Wait();  // 同步等待，实际使用建议调用异步方法
+        //        return _userInfo;
+        //    }
+        //}
 
         /// <summary>
         /// 账户信息（延迟加载）
         /// </summary>
-        public AccountInfo AccountInfo
-        {
-            get
-            {
-                if (_accountInfo == null)
-                    _accountInfo = new AccountInfo(this);
-                return _accountInfo;
-            }
-        }
+        //public AccountInfo AccountInfo
+        //{
+        //    get
+        //    {
+        //        if (_accountInfo == null)
+        //            _accountInfo = new AccountInfo(this);
+        //        return _accountInfo;
+        //    }
+        //}
 
         #endregion
 
@@ -210,22 +216,22 @@ namespace OB.Tools
         /// <summary>
         /// 初始化用户信息（调用 Web 服务的 GetLoginInfo）
         /// </summary>
-        private async Task InitializeUserInfoAsync()
-        {
-            if (!_isAuthenticated)
-                throw new InvalidOperationException("请先登录。");
+        //private async Task InitializeUserInfoAsync()
+        //{
+        //    if (!_isAuthenticated)
+        //        throw new InvalidOperationException("请先登录。");
 
-            try
-            {
-                var loginInfo = await _soapClient.GetLoginInfoAsync();
-                _userInfo = new UserInfo(loginInfo);
-            }
-            catch (Exception ex)
-            {
-                _lastMessage = ex.Message;
-                _userInfo = new UserInfo(); // 空对象
-            }
-        }
+        //    try
+        //    {
+        //        var loginInfo = await _soapClient.GetLoginInfoAsync();
+        //        _userInfo = new UserInfo(loginInfo);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _lastMessage = ex.Message;
+        //        _userInfo = new UserInfo(); // 空对象
+        //    }
+        //}
 
         #endregion
 
@@ -311,7 +317,7 @@ namespace OB.Tools
         /// <summary>
         /// 同步版本 GetSelectResult
         /// </summary>
-        public DataSet GetSelectResult(string selectCommand,  string message, int runType = 0)
+        public DataSet GetSelectResult(string selectCommand, string message, int runType = 0)
         {
             var result = Task.Run(() => GetSelectResultAsync(selectCommand, message, runType)).Result;
             // 注意：异步方法不返回 message，这里只能返回结果，message 无法更新。
@@ -325,7 +331,7 @@ namespace OB.Tools
         public DataSet GetSelectResult(string selectCommand)
         {
             string msg = "";
-            return GetSelectResult(selectCommand,msg, 0);
+            return GetSelectResult(selectCommand, msg, 0);
         }
 
         /// <summary>
@@ -387,7 +393,7 @@ namespace OB.Tools
             public string SQL { get; set; }
             public List<SqlParameter> Parameters { get; private set; }
 
-            public ParameterizedQuery()
+            public ParameterizedQuery() 
             {
                 Parameters = new List<SqlParameter>();
             }
@@ -727,43 +733,43 @@ namespace OB.Tools
 
     #region 用户信息类（简版，可根据实际需求扩展）
 
-    public class UserInfo
-    {
-        public string LoginName { get; set; }
-        public string FullName { get; set; }
-        public string FunctionGroup { get; set; }
-        public string Department { get; set; }
-        public string JobTitle { get; set; }
-        public string Account { get; set; }
-        public string Country { get; set; }
-        public string WorkShop { get; set; }
-        public string Team { get; set; }
+    //public  class UserInfo
+    //{
+    //    public string LoginName { get; set; }
+    //    public string FullName { get; set; }
+    //    public string FunctionGroup { get; set; }
+    //    public string Department { get; set; }
+    //    public string JobTitle { get; set; }
+    //    public string Account { get; set; }
+    //    public string Country { get; set; }
+    //    public string WorkShop { get; set; }
+    //    public string Team { get; set; }
 
-        public UserInfo() { }
+    //    public UserInfo() { }
 
-        public UserInfo(LoginInfo loginInfo)
-        {
-            LoginName = loginInfo.LoginName;
-            FullName = loginInfo.FullName;
-            FunctionGroup = loginInfo.FunctionGroup;
-            Department = loginInfo.Department;
-            JobTitle = loginInfo.JobTitle;
-            Account = loginInfo.Account;
-            Country = loginInfo.Country;
-            WorkShop = loginInfo.WorkShop;
-            Team = loginInfo.Team;
-        }
-    }
+    //    public UserInfo(LoginInfo loginInfo)
+    //    {
+    //        LoginName = loginInfo.LoginName;
+    //        FullName = loginInfo.FullName;
+    //        FunctionGroup = loginInfo.FunctionGroup;
+    //        Department = loginInfo.Department;
+    //        JobTitle = loginInfo.JobTitle;
+    //        Account = loginInfo.Account;
+    //        Country = loginInfo.Country;
+    //        WorkShop = loginInfo.WorkShop;
+    //        Team = loginInfo.Team;
+    //    }
+    //}
 
-    public class AccountInfo
-    {
-        private RemoteDBTools _tools;
-        // 根据需要添加属性
-        public AccountInfo(RemoteDBTools tools)
-        {
-            _tools = tools;
-            // 可在此通过 _tools 查询数据库初始化信息
-        }
-    }
+    //public class AccountInfo
+    //{
+    //    private RemoteDBTools _tools;
+    //    // 根据需要添加属性
+    //    public AccountInfo(RemoteDBTools tools)
+    //    {
+    //        _tools = tools;
+    //        // 可在此通过 _tools 查询数据库初始化信息
+    //    }
+    //}
     #endregion
 }
