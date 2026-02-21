@@ -62,6 +62,7 @@
 										 FontSize="14"
 										 Background="Transparent"
 										 BorderThickness="0"
+										 Foreground="Black"
 										 Padding="12">
 									<TextBox.Styles>
 										<Style Selector="TextBox:focus">
@@ -105,6 +106,7 @@
 										 Background="Transparent"
 										 BorderThickness="0"
 										 PasswordChar="*"
+										 Foreground="Black"
 										 Padding="12">
 									<TextBox.Styles>
 										<Style Selector="TextBox:focus">

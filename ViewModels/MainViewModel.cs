@@ -11,6 +11,7 @@ namespace OB.ViewModels
     {
         private bool _isMenuExpanded = true;
         private LeftMenuItem _selectedMenuItem;
+        public static MainViewModel DesignInstance => new MainViewModel();
 
         public bool IsMenuExpanded
         {
@@ -32,7 +33,8 @@ namespace OB.ViewModels
         {
             MenuItems = new ObservableCollection<LeftMenuItem>
             {
-                new LeftMenuItem { Icon = "🏠", Title = "首頁", ViewName = "Home" }
+                new LeftMenuItem { Icon = "🏠", Title = "首頁", ViewName = "Home" },
+                new LeftMenuItem { Icon = "🏠", Title = "設置", ViewName = "Set" }
             };
 
             ToggleMenuCommand = new DelegateCommand(() => IsMenuExpanded = !IsMenuExpanded);

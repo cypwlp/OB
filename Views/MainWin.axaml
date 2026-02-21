@@ -3,278 +3,120 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:prism="http://prismlibrary.com/"
+        xmlns:dialogHostAvalonia="clr-namespace:DialogHostAvalonia;assembly=DialogHost.Avalonia"
+        xmlns:controls="clr-namespace:Material.Styles.Controls;assembly=Material.Styles"
+        xmlns:avalonia="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
         xmlns:vm="clr-namespace:OB.ViewModels"
-        xmlns:converters="clr-namespace:OB.Tools.Converters;assembly=OB"
-        mc:Ignorable="d" 
+        mc:Ignorable="d"
         d:DesignWidth="1200" d:DesignHeight="800"
         Title="MainWin"
         x:Class="OB.Views.MainWin"
         x:DataType="vm:MainViewModel"
-        d:DataContext="vm:MainViewModel"
-        MinWidth="800" MinHeight="600"
-        FontFamily="Microsoft YaHei, Segoe UI">
-    
-    <Window.Styles>
-        <Style Selector="ToggleButton.nav-button">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="12 8"/>
-            <Setter Property="HorizontalContentAlignment" Value="Left"/>
-            <Setter Property="Cursor" Value="Hand"/>
-        </Style>
-        
-        <Style Selector="ToggleButton.nav-button:pointerover">
-            <Setter Property="Background" Value="#1A000000"/>
-        </Style>
-        
-        <Style Selector="ToggleButton.nav-button:checked /template/ ContentPresenter">
-            <Setter Property="CornerRadius" Value="6"/>
-            <Setter Property="Background" Value="{DynamicResource SystemAccentColor}"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
-        </Style>
-        
-        <Style Selector="ToggleButton.nav-button:checked">
-            <Setter Property="Foreground" Value="White"/>
-        </Style>
-    </Window.Styles>
+        d:DataContext="{x:Static vm:MainViewModel.DesignInstance}"
+        MinWidth="800" MinHeight="600">
 
-    <Grid ColumnDefinitions="Auto,1*" Background="#F5F5F5">
-        
-        <!-- 左側菜單欄 -->
-        <Border Grid.Column="0" 
-                Background="White" 
-                BorderBrush="#E0E0E0" 
-                BorderThickness="0 0 1 0"
-                Width="{Binding IsMenuExpanded, Converter={StaticResource BoolToSizeConverter}, ConverterParameter='220,60'}">
-            
-            <Grid RowDefinitions="Auto,1*,Auto">
-                
-                <!-- 頂部 Logo 和切換按鈕 -->
-                <StackPanel Grid.Row="0" 
-                            Margin="16 20 16 20" 
-                            Spacing="12">
-                    
-                    <Grid ColumnDefinitions="Auto,1*" 
-                          VerticalAlignment="Center">
-                        
-                        <!-- Logo -->
-                        <Border Grid.Column="0" 
-                                Width="32" 
-                                Height="32" 
-                                CornerRadius="6"
-                                Background="{DynamicResource SystemAccentColor}"
-                                HorizontalAlignment="Left">
-                            <TextBlock Text="OB" 
-                                       Foreground="White" 
-                                       FontSize="14"
-                                       FontWeight="Bold"
-                                       HorizontalAlignment="Center"
-                                       VerticalAlignment="Center"/>
-                        </Border>
-                        
-                        <!-- 應用名稱（收縮時隱藏） -->
-                        <StackPanel Grid.Column="1" 
-                                    Margin="12 0 0 0"
-                                    VerticalAlignment="Center"
-                                    IsVisible="{Binding IsMenuExpanded}">
-                            <TextBlock Text="OB System" 
-                                       FontSize="18" 
-                                       FontWeight="SemiBold"
-                                       Foreground="#1A1A1A"/>
-                            <TextBlock Text="v2.0.1" 
-                                       FontSize="11" 
-                                       Foreground="#666"/>
-                        </StackPanel>
-                    </Grid>
-                    
-                    <!-- 收縮/展開按鈕 -->
-                    <Button Command="{Binding ToggleMenuCommand}"
-                            HorizontalAlignment="{Binding IsMenuExpanded, 
-                                                   Converter={StaticResource BoolToAlignmentConverter}, 
-                                                   ConverterParameter='Left,Stretch'}"
-                            Margin="0"
-                            Padding="8"
-                            CornerRadius="6">
-                        <PathIcon Data="{Binding IsMenuExpanded, 
-                                           Converter={StaticResource BoolToMenuIconConverter}}"
-                                  Width="20" 
-                                  Height="20"/>
-                    </Button>
-                    
-                </StackPanel>
-                
-                <!-- 菜單項列表 -->
-                <ScrollViewer Grid.Row="1"
-                              Margin="0 0 0 20"
-                              VerticalScrollBarVisibility="Auto">
-                    <ItemsControl ItemsSource="{Binding MenuItems}"
-                                  Margin="8 0">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </ScrollViewer>
-                
-                <!-- 底部用戶信息 -->
-                <Border Grid.Row="2" 
-                        Background="#F8F8F8" 
-                        BorderThickness="1 0 0 0"
-                        BorderBrush="#E0E0E0"
-                        Padding="16 12">
-                    <Grid ColumnDefinitions="Auto,1*,Auto">
-                        
-                        <!-- 用戶頭像 -->
-                        <Border Grid.Column="0" 
-                                Width="36" 
-                                Height="36" 
-                                CornerRadius="18"
-                                Background="#4CAF50">
-                            <TextBlock Text="U" 
-                                       Foreground="White" 
-                                       FontSize="16"
-                                       FontWeight="Bold"
-                                       HorizontalAlignment="Center"
-                                       VerticalAlignment="Center"/>
-                        </Border>
-                        
-                        <!-- 用戶信息（收縮時隱藏） -->
-                        <StackPanel Grid.Column="1" 
-                                    Margin="12 0"
-                                    IsVisible="{Binding IsMenuExpanded}">
-                            <TextBlock Text="管理員" 
-                                       FontSize="14" 
-                                       FontWeight="Medium"
-                                       Foreground="#1A1A1A"/>
-                            <TextBlock Text="admin@example.com" 
-                                       FontSize="11" 
-                                       Foreground="#666"/>
-                        </StackPanel>
-                        
-                        <!-- 更多按鈕 -->
-                        <Button Grid.Column="2"
-                                Width="32"
-                                Height="32"
-                                Padding="0"
-                                CornerRadius="16"
-                                IsVisible="{Binding IsMenuExpanded}">
-                            <TextBlock Text="⋯" 
-                                       FontSize="18"
-                                       HorizontalAlignment="Center"
-                                       VerticalAlignment="Center"/>
-                        </Button>
-                        
-                    </Grid>
-                </Border>
-                
-            </Grid>
-            
-        </Border>
-        
-        <!-- 右側內容區域 -->
-        <Grid Grid.Column="1" Margin="16">
-            
-            <!-- 頂部導航欄 -->
-            <Grid RowDefinitions="Auto,1*">
-                <Border Grid.Row="0"
-                        Background="White"
-                        CornerRadius="8"
-                        Padding="20 16"
-                        Margin="0 0 0 16"
-                        BorderBrush="#E0E0E0"
-                        BorderThickness="1">
-                    
-                    <Grid ColumnDefinitions="1*,Auto,Auto">
-                        
-                        <!-- 當前頁面標題 -->
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Text="{Binding SelectedMenuItem.Title}" 
-                                       FontSize="20" 
-                                       FontWeight="SemiBold"
-                                       Foreground="#1A1A1A"/>
-                            <TextBlock Text="歡迎使用 OB 系統" 
-                                       FontSize="13" 
-                                       Foreground="#666"
-                                       Margin="0 4 0 0"/>
-                        </StackPanel>
-                        
-                        <!-- 搜索框 -->
-                        <Border Grid.Column="1"
-                                Width="240"
-                                Height="36"
-                                CornerRadius="18"
-                                Background="#F5F5F5"
-                                Margin="0 0 12 0">
-                            <Grid ColumnDefinitions="Auto,1*" Margin="12 0">
-                                <TextBlock Grid.Column="0" 
-                                           Text="🔍" 
-                                           FontSize="14"
-                                           Margin="0 0 8 0"
-                                           VerticalAlignment="Center"/>
-                                <TextBox Grid.Column="1" 
-                                         Background="Transparent"
-                                         BorderThickness="0"
-                                         Watermark="搜索..."
-                                         FontSize="14"/>
-                            </Grid>
-                        </Border>
-                        
-                        <!-- 操作按鈕 -->
-                        <StackPanel Grid.Column="2"
-                                    Orientation="Horizontal"
-                                    Spacing="8">
-                            <Button Width="36"
-                                    Height="36"
-                                    Padding="0"
-                                    CornerRadius="18">
-                                <TextBlock Text="🔔" 
-                                           FontSize="16"/>
-                            </Button>
-                            <Button Width="36"
-                                    Height="36"
-                                    Padding="0"
-                                    CornerRadius="18">
-                                <TextBlock Text="🌙" 
-                                           FontSize="16"/>
-                            </Button>
-                        </StackPanel>
-                        
-                    </Grid>
-                </Border>
-                
-                <!-- 主內容區域 -->
-                <Border Grid.Row="1"
-                        Background="White"
-                        CornerRadius="12"
-                        Padding="24"
-                        BorderBrush="#E0E0E0"
-                        BorderThickness="1">
-                    
-                    <!-- 移除重複的子元素，只保留一個 -->
-                    <StackPanel HorizontalAlignment="Center"
-                                VerticalAlignment="Center"
-                                Spacing="16">
-                        <TextBlock Text="🚀" 
-                                   FontSize="64"
-                                   HorizontalAlignment="Center"/>
-                        <TextBlock Text="{Binding SelectedMenuItem.Title, StringFormat='歡迎來到 {0} 頁面'}" 
-                                   FontSize="24" 
-                                   FontWeight="Medium"
-                                   HorizontalAlignment="Center"/>
-                        <TextBlock Text="選擇左側菜單項以切換不同功能" 
-                                   FontSize="16" 
-                                   Foreground="#666"
-                                   HorizontalAlignment="Center"/>
+    <!-- 根容器：DialogHost（用于全局对话框） -->
+    <dialogHostAvalonia:DialogHost Identifier="MainDialogHost">
+        <!-- SnackbarHost（用于全局提示） -->
+        <controls:SnackbarHost HostName="Root">
+            <!-- 左侧导航抽屉 -->
+            <controls:NavigationDrawer LeftDrawerOpened="{Binding IsMenuExpanded, Mode=TwoWay}"
+                                       Classes="permanent">
+                <!-- 左侧抽屉内容：菜单 + 头部信息 -->
+                <controls:NavigationDrawer.LeftDrawerContent>
+                    <ScrollViewer>
+                        <StackPanel>
+                            <!-- 应用信息区域（图标、名称） -->
+                            <controls:ColorZone Mode="Accent" Height="120">
+                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <Image Width="64" Height="64"
+                                           Source="avares://OB/Assets/app-icon.png"
+                                           Margin="0,0,0,8" />
+                                    <TextBlock Classes="Headline6" Text="OB 管理系统"
+                                               HorizontalAlignment="Center" />
+                                </StackPanel>
+                            </controls:ColorZone>
 
-<!-- 将 Border 改为 ContentControl -->
-<ContentControl prism:RegionManager.RegionName="ContentRegion" />
-                    </StackPanel>
-                    
-                </Border>
-            </Grid>
-            
-        </Grid>
-        
-    </Grid>
-    
+                            <!-- 菜单列表 -->
+                            <ListBox ItemsSource="{Binding MenuItems}"
+                                     SelectedItem="{Binding SelectedMenuItem, Mode=TwoWay}"
+                                     Background="Transparent"
+                                     Classes="NoScroll">
+                                <ListBox.Styles>
+                                    <!-- 菜单项样式：高度48，垂直居中，内边距16 -->
+                                    <Style Selector="ListBoxItem">
+                                        <Setter Property="Height" Value="48" />
+                                        <Setter Property="Padding" Value="16,0" />
+                                        <Setter Property="VerticalContentAlignment" Value="Center" />
+                                    </Style>
+                                </ListBox.Styles>
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal"
+                                                    HorizontalAlignment="Left"
+                                                    Spacing="16">
+                                            <!-- 图标（使用 MaterialIcon） -->
+                                            <avalonia:MaterialIcon Kind="{Binding Icon}" />
+                                            <!-- 菜单标题 -->
+                                            <TextBlock Text="{Binding Title}" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </StackPanel>
+                    </ScrollViewer>
+                </controls:NavigationDrawer.LeftDrawerContent>
+
+                <!-- 主内容区域（右侧） -->
+                <DockPanel LastChildFill="True">
+     
+                    <!-- 顶部应用栏（AppBar） -->
+                    <controls:ColorZone Mode="PrimaryMid"
+                                         Height="56"
+                                         DockPanel.Dock="Top"
+                                         ZIndex="1">
+                        <Grid Margin="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <!-- 汉堡菜单按钮（控制抽屉展开/折叠） -->
+                            <ToggleButton Grid.Column="0"
+                                          IsChecked="{Binding IsMenuExpanded, Mode=TwoWay}"
+                                          Theme="{StaticResource MaterialFlatButton}"
+                                          Width="32" Height="32" Padding="4">
+                                <avalonia:MaterialIcon Kind="Menu" Width="24" Height="24" />
+                            </ToggleButton>
+
+                            <!-- 当前页面标题（可动态绑定） -->
+                            <TextBlock Grid.Column="1"
+                                       Classes="Headline6"
+                                       Text="{Binding SelectedMenuItem.Title, FallbackValue='主页'}"
+                                       VerticalAlignment="Center"
+                                       Margin="16,0,0,0" />
+
+                            <!-- 右侧用户菜单（示例） -->
+                            <StackPanel Grid.Column="2"
+                                        Orientation="Horizontal"
+                                        Spacing="8">
+                                <Border Width="32" Height="32" CornerRadius="16"
+                                        Background="Gray">
+                                    <Image Source="avares://OB/Assets/avatar.png"
+                                           Stretch="UniformToFill" />
+                                </Border>
+                                <TextBlock Text="管理员" VerticalAlignment="Center" />
+                                <Button Theme="{StaticResource MaterialFlatButton}"
+                                        Width="32" Height="32" Padding="4">
+                                    <avalonia:MaterialIcon Kind="DotsVertical" Width="24" Height="24" />
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                    </controls:ColorZone>
+                    <ContentControl prism:RegionManager.RegionName="MainRegion" />
+                </DockPanel>
+            </controls:NavigationDrawer>
+        </controls:SnackbarHost>
+    </dialogHostAvalonia:DialogHost>
 </Window>

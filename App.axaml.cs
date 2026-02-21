@@ -62,10 +62,10 @@ namespace OB
                     if (result.Parameters.TryGetValue<RemoteDBTools>("dbtools", out var dbtools))
                     {
                         var mainWin = Container.Resolve<MainWin>();
-                        if (mainWin.DataContext is MainViewModel vm)
-                        {
-                           // vm.DBTools = dbtools; // 需要在 MainViewModel 中定义该属性
-                        }
+                        var vm = Container.Resolve<MainViewModel>(); // 通过容器解析 ViewModel
+                                                                     // 如果有需要传递的 DBTools，可以赋值给 ViewModel 的属性
+                                                                     // vm.DBTools = dbtools;
+                        mainWin.DataContext = vm; // 关键：手动设置 DataContext
                         mainWin.Show();
                         desktopLifetime.MainWindow = mainWin;
                         splashWindow.Close();

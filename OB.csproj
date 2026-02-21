@@ -15,7 +15,15 @@
     <Compile Remove="Views\Dialogs\SetUrl.axaml.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Remove="Assets\app-icon.png" />
+  </ItemGroup>
+  <ItemGroup>
     <Content Include="favicon.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\app-icon.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
     <None Include="C:\Users\20250923\Desktop\favicon.ico">
@@ -24,6 +32,7 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+	    <AvaloniaResource Include="Assets\**" />	  
     <PackageReference Include="Avalonia" Version="11.3.11" />
     <PackageReference Include="Avalonia.Desktop" Version="11.3.11" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.11" />
@@ -37,6 +46,7 @@
     <PackageReference Include="Material.Avalonia" Version="3.13.4" />
     <PackageReference Include="Material.Avalonia.DataGrid" Version="3.13.4" />
     <PackageReference Include="Material.Avalonia.Dialogs" Version="3.13.4" />
+    <PackageReference Include="Material.Icons.Avalonia" Version="3.0.0" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.4" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.3" />
     <PackageReference Include="Prism.DryIoc.Avalonia" Version="9.0.537.11130" />
@@ -44,6 +54,9 @@
 	  <PackageReference Include="System.ServiceModel.Primitives" Version="8.0.0" />
 	  <PackageReference Include="System.ServiceModel.Http" Version="8.0.0" />
 	  <PackageReference Include="System.ServiceModel.NetTcp" Version="8.0.0" />
+	  <PackageReference Include="DialogHost.Avalonia" Version="0.10.4" />
+	  <PackageReference Include="Avalonia.Xaml.Interactivity" Version="11.3.0.6" />
+	  <PackageReference Include="Avalonia.Xaml.Interactions" Version="11.3.0.6" />
   </ItemGroup>
   <ItemGroup>
     <AvaloniaXaml Update="App.axaml">
