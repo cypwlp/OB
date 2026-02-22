@@ -47,12 +47,12 @@ xmlns:ia="using:Avalonia.Xaml.Interactions.Core"
                                      Background="Transparent"
 
                                      Classes="NoScroll">
-<i:Interaction.Behaviors>
-    <ia:EventTriggerBehavior EventName="SelectionChanged">
-		<ia:InvokeCommandAction Command="{Binding SelectMenuItemCommand}"
-								CommandParameter="{Binding SelectedItem, RelativeSource={RelativeSource FindAncestor, AncestorType=ListBox}}" />
-    </ia:EventTriggerBehavior>
-</i:Interaction.Behaviors>
+								<i:Interaction.Behaviors>
+									<ia:EventTriggerBehavior EventName="SelectionChanged">
+										<ia:InvokeCommandAction Command="{Binding SelectMenuItemCommand}"
+																CommandParameter="{Binding SelectedMenuItem}" />
+									</ia:EventTriggerBehavior>
+								</i:Interaction.Behaviors>
                                 <ListBox.Styles>
                                     <!-- 菜单项样式：高度48，垂直居中，内边距16 -->
                                     <Style Selector="ListBoxItem">
@@ -66,6 +66,7 @@ xmlns:ia="using:Avalonia.Xaml.Interactions.Core"
                                         <StackPanel Orientation="Horizontal"
                                                     HorizontalAlignment="Left"
                                                     Spacing="16">
+							
                                             <!-- 图标（使用 MaterialIcon） -->
                                             <avalonia:MaterialIcon Kind="{Binding Icon}" />
                                             <!-- 菜单标题 -->

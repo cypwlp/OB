@@ -41,10 +41,24 @@ namespace OB.ViewModels
             set => SetProperty(ref _isMenuExpanded, value);
         }
 
+        //public LeftMenuItem SelectedMenuItem
+        //{
+        //    get => _selectedMenuItem;
+        //    set => SetProperty(ref _selectedMenuItem, value);
+        //}
+
+        //private LeftMenuItem _selectedMenuItem;
         public LeftMenuItem SelectedMenuItem
         {
             get => _selectedMenuItem;
-            set => SetProperty(ref _selectedMenuItem, value);
+            set
+            {
+                if (SetProperty(ref _selectedMenuItem, value) && value != null)
+                {
+                    // 触发导航，不等待
+                    _ = NavigateAsync(value);
+                }
+            }
         }
 
         public ObservableCollection<LeftMenuItem> MenuItems { get; }
