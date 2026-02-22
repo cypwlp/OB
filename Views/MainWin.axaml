@@ -118,7 +118,7 @@ xmlns:ia="using:Avalonia.Xaml.Interactions.Core"
                                     <Image Source="avares://OB/Assets/avatar.png"
                                            Stretch="UniformToFill" />
                                 </Border>
-                                <TextBlock Text="管理员" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding LogUser.FullName }" VerticalAlignment="Center" />
                                 <Button Theme="{StaticResource MaterialFlatButton}"
                                         Width="32" Height="32" Padding="4">
                                     <avalonia:MaterialIcon Kind="DotsVertical" Width="24" Height="24" />
