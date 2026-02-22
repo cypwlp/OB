@@ -4,29 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="OB.Home">
-<StackPanel Margin="20" Spacing="15">
-    <TextBlock Text="外观设置" FontSize="18" FontWeight="Bold"/>
-    <Border Background="{DynamicResource ThemeBackgroundBrush}" 
-            CornerRadius="30" Padding="10" Width="200">
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="10">
-            <ToggleButton x:Name="ThemeToggle" 
-                          Width="60" Height="30" 
-                          Content="{Binding ElementName=ThemeToggle, Path=IsChecked, Converter={StaticResource BoolToIconConverter}}"
-                          Padding="0">
-                <ToggleButton.Styles>
-                    <Style Selector="ToggleButton /template/ ContentPresenter#PART_ContentPresenter">
-                        <Setter Property="CornerRadius" Value="15"/>
-                        <Setter Property="Background" Value="Transparent"/>
-                    </Style>
-                </ToggleButton.Styles>
-                <ToggleButton.Transitions>
-                    <Transitions>
-
-                    </Transitions>
-                </ToggleButton.Transitions>
-            </ToggleButton>
-            <TextBlock Text="深色模式" VerticalAlignment="Center"/>
-        </StackPanel>
-    </Border>
-</StackPanel>
+	<Grid>
+		<TextBlock>棣栭爜</TextBlock>
+	</Grid>
 </UserControl>

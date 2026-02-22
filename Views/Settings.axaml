@@ -4,33 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="OB.Settings">
-<StackPanel Margin="20" Spacing="10">
-    <Expander Header="高级选项" Padding="10">
-        <Expander.HeaderTemplate>
-            <DataTemplate>
-                <StackPanel Orientation="Horizontal" Spacing="5">
-                    <TextBlock Text="??" FontSize="16"/>
-                    <TextBlock Text="{Binding}" VerticalAlignment="Center"/>
-                    <PathIcon Data="{StaticResource ChevronRight}" 
-                              RenderTransformOrigin="0.5,0.5">
-                        <PathIcon.RenderTransform>
-                            <RotateTransform Angle="0"/>
-                        </PathIcon.RenderTransform>
-                        <PathIcon.Transitions>
-                            <Transitions>
-
-                            </Transitions>
-                        </PathIcon.Transitions>
-                    </PathIcon>
-                </StackPanel>
-            </DataTemplate>
-        </Expander.HeaderTemplate>
-        <StackPanel Margin="20,10,0,0" Spacing="8">
-            <CheckBox Content="启用实验性功能"/>
-            <CheckBox Content="显示调试信息"/>
-            <Slider Minimum="1" Maximum="10" Value="3" TickFrequency="1" 
-                    TickPlacement="Outside" Width="200"/>
-        </StackPanel>
-    </Expander>
-</StackPanel>
+	<Grid>
+		<TextBlock>瑷疆</TextBlock>
+	</Grid>
 </UserControl>

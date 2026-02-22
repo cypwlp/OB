@@ -10,15 +10,5 @@ namespace OB.Views
         {
             InitializeComponent();
         }
-
-        protected override void OnOpened(EventArgs e)
-        {
-            base.OnOpened(e);
-
-            if (DataContext is MainViewModel vm)
-            {
-                _ = vm.DefaultNavigateAsync(); 
-            }
-        }
     }
 }

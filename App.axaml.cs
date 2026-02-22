@@ -11,6 +11,7 @@ using OB.Views.Dialogs;
 using Prism.Dialogs;
 using Prism.DryIoc;
 using Prism.Ioc;
+using Prism.Navigation.Regions;
 using System;
 
 namespace OB
@@ -64,14 +65,18 @@ namespace OB
                     // 登录成功，获取传递的 DBTools 实例
                     if (result.Parameters.TryGetValue<RemoteDBTools>("dbtools", out var dbtools))
                     {
-                        if (result.Parameters.TryGetValue<LogUserInfo>("LogUser", out var LogUser)) {
+                        if (result.Parameters.TryGetValue<LogUserInfo>("LogUser", out var LogUser))
+                        {
                             var mainWin = Container.Resolve<MainWin>();
                             var vm = Container.Resolve<MainViewModel>();
                             vm.LogUser = LogUser;
-                            vm.RemoteDBTools = dbtools;                   
+                            vm.RemoteDBTools = dbtools;
                             mainWin.DataContext = vm;
+                            var regionManager = Container.Resolve<IRegionManager>();
+                            RegionManager.SetRegionManager(mainWin, regionManager);
                             mainWin.Show();
                             desktopLifetime.MainWindow = mainWin;
+                            await vm.DefaultNavigateAsync();
                             splashWindow.Close();
                         }
                     }

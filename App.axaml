@@ -11,6 +11,7 @@
         <converters:BoolToAlignmentConverter x:Key="BoolToAlignmentConverter"/>
         <converters:BoolToMenuIconConverter x:Key="BoolToMenuIconConverter"/>
         <converters:ObjectEqualityConverter x:Key="ObjectEqualityConverter"/>
+		<converters:BoolToMenuIconConverter x:Key="BoolToIconConverter"/>
     </Application.Resources>
   
     <Application.Styles>
