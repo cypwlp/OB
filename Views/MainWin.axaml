@@ -49,8 +49,8 @@ xmlns:ia="using:Avalonia.Xaml.Interactions.Core"
                                      Classes="NoScroll">
 <i:Interaction.Behaviors>
     <ia:EventTriggerBehavior EventName="SelectionChanged">
-        <ia:InvokeCommandAction Command="{Binding SelectMenuItemCommand}"
-                               /> 
+		<ia:InvokeCommandAction Command="{Binding SelectMenuItemCommand}"
+								CommandParameter="{Binding SelectedItem, RelativeSource={RelativeSource FindAncestor, AncestorType=ListBox}}" />
     </ia:EventTriggerBehavior>
 </i:Interaction.Behaviors>
                                 <ListBox.Styles>

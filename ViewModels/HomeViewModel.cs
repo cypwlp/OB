@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace OB.ViewModels
 {
-    internal class HomeViewModel
+    public class HomeViewModel
     {
     }
 }
