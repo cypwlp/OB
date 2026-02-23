@@ -70,6 +70,7 @@ namespace OB.ViewModels.Dialogs
             _dialogService = dialogService;
             logUser = new LogUserInfo();
             // 从设置中加载默认用户名和服务器
+
             var settings = OB.Default;
             UserName = settings.mUsername;
             Server = settings.mServer;
