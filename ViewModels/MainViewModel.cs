@@ -121,6 +121,28 @@ namespace OB.ViewModels
             }
         }
 
+        //private async void OnUpdateReadyToInstall(object? sender, EventArgs e)
+        //{
+        //    // 防止多次触发
+        //    App.UpdateReadyToInstall -= OnUpdateReadyToInstall;
+
+        //    // 切换到 UI 线程
+        //    await Dispatcher.UIThread.InvokeAsync(async () =>
+        //    {
+        //        var result = await ShowUpdateConfirmationDialog();
+        //        if (result)
+        //        {
+        //            // 关闭主窗口，释放文件锁
+        //            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime lifetime)
+        //            {
+        //                lifetime.MainWindow?.Close();
+        //            }
+        //            await Task.Delay(500); // 等待窗口完全关闭
+        //            App.InstallUpdate();
+        //        }
+        //    });
+        //}
+
         private async Task<bool> ShowUpdateConfirmationDialog()
         {
             var mainWindow = (Avalonia.Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
