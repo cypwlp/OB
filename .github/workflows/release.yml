@@ -3,13 +3,13 @@ name: Build and Release
 on:
   push:
     tags:
-      - 'v*'           # 当推送 v1.0.0 这样的标签时触发
+      - 'v*'           
 
 jobs:
   build:
     strategy:
       matrix:
-        os: [windows-latest, macos-latest]   # 同时构建 Windows 和 macOS
+        os: [windows-latest, macos-latest]  
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -68,9 +68,8 @@ jobs:
 
       - name: Generate appcast.xml
         run: |
-          VERSION=${GITHUB_REF_NAME#v}   # 去除标签前的 'v'
+          VERSION=${GITHUB_REF_NAME#v}   
           DATE=$(date -u +"%a, %d %b %Y %H:%M:%S GMT")
-          # 构建下载 URL（使用 GitHub Release 的资产链接）
           WIN_URL="https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/OB-win-x64.zip"
           OSX_URL="https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/OB-osx-x64.zip"
 
@@ -86,7 +85,7 @@ jobs:
                 <sparkle:releaseNotesLink>https://your-update-server.com/release-notes.html</sparkle:releaseNotesLink>
                 <enclosure url="$WIN_URL"
                            sparkle:os="windows"
-                           sparkle:installerArguments="/SILENT"   # 如果需要静默安装参数，可以自定义
+                           sparkle:installerArguments="/SILENT"  
                            length="$(stat -c%s OB-win-x64.zip)"
                            type="application/zip" />
                 <enclosure url="$OSX_URL"
