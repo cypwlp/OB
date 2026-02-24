@@ -3,15 +3,14 @@ name: Build and Release
 on:
   push:
     tags:
-      - 'v*'           
+      - 'v*'
 
 jobs:
   build:
     strategy:
       matrix:
-        os: [windows-latest, macos-latest]  
+        os: [windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -26,10 +25,21 @@ jobs:
 
       - name: Publish for current OS
         run: |
+          # 從 tag 自動取得版本號 (v1.0.8 → 1.0.8)
+          VERSION=${GITHUB_REF_NAME#v}
+          
           if [ "$RUNNER_OS" == "Windows" ]; then
-            dotnet publish -c Release -o publish/win-x64 --self-contained false -r win-x64
+            dotnet publish -c Release -o publish/win-x64 \
+              --self-contained false -r win-x64 \
+              /p:Version=$VERSION \
+              /p:FileVersion=$VERSION.0 \
+              /p:AssemblyVersion=$VERSION.0
           else
-            dotnet publish -c Release -o publish/osx-x64 --self-contained false -r osx-x64
+            dotnet publish -c Release -o publish/osx-x64 \
+              --self-contained false -r osx-x64 \
+              /p:Version=$VERSION \
+              /p:FileVersion=$VERSION.0 \
+              /p:AssemblyVersion=$VERSION.0
           fi
         shell: bash
 
@@ -68,11 +78,10 @@ jobs:
 
       - name: Generate appcast.xml
         run: |
-          VERSION=${GITHUB_REF_NAME#v}   
+          VERSION=${GITHUB_REF_NAME#v}
           DATE=$(date -u +"%a, %d %b %Y %H:%M:%S GMT")
           WIN_URL="https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/OB-win-x64.zip"
           OSX_URL="https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/OB-osx-x64.zip"
-
           cat > appcast.xml <<EOF
           <?xml version="1.0" encoding="UTF-8"?>
           <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
@@ -85,7 +94,7 @@ jobs:
                 <sparkle:releaseNotesLink>https://your-update-server.com/release-notes.html</sparkle:releaseNotesLink>
                 <enclosure url="$WIN_URL"
                            sparkle:os="windows"
-                           sparkle:installerArguments="/SILENT"  
+                           sparkle:installerArguments="/SILENT"
                            length="$(stat -c%s OB-win-x64.zip)"
                            type="application/zip" />
                 <enclosure url="$OSX_URL"
