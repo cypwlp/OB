@@ -23,6 +23,7 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore
 
+      # ========== Windows 构建（使用 Inno Setup 生成安装包） ==========
       - name: Publish Windows (self-contained)
         if: runner.os == 'Windows'
         shell: pwsh
@@ -45,7 +46,6 @@ jobs:
           $installer = "$env:TEMP\innosetup.exe"
           Invoke-WebRequest -Uri $innosetup_url -OutFile $installer
           Start-Process -Wait -FilePath $installer -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-"
-          # 添加 ISCC 到 PATH
           $isccPath = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
           echo "ISCC_PATH=$isccPath" >> $env:GITHUB_ENV
 
@@ -66,10 +66,10 @@ jobs:
           OutputDir=installer
           OutputBaseFilename=OB-win-x64
           PrivilegesRequired=admin
-          SetupIconFile=Assets\favicon.ico
+          ; SetupIconFile=Assets\favicon.ico   ; 图标文件已删除，故注释掉
 
           [Files]
-          Source: "publish\win-x64\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
+          Source: "$pwd\publish\win-x64\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
           [Icons]
           Name: "{group}\OB 检测系统"; Filename: "{app}\OB.exe"
           Name: "{autodesktop}\OB 检测系统"; Filename: "{app}\OB.exe"
@@ -91,6 +91,7 @@ jobs:
           name: win-x64-installer
           path: installer/OB-win-x64.exe
 
+      # ========== macOS 构建（生成 .app 并打包为 zip） ==========
       - name: Publish macOS (self-contained)
         if: runner.os == 'macOS'
         shell: bash
@@ -137,8 +138,7 @@ jobs:
             <string>????</string>
             <key>CFBundleExecutable</key>
             <string>OB</string>
-            <key>CFBundleIconFile</key>
-            <string>app-icon.icns</string>  
+            <!-- 图标文件不存在，暂时注释掉 <key>CFBundleIconFile</key> <string>app-icon.icns</string> -->
             <key>LSMinimumSystemVersion</key>
             <string>10.12</string>
             <key>NSPrincipalClass</key>
@@ -148,7 +148,6 @@ jobs:
           </dict>
           </plist>
           EOF
- 
 
       - name: Zip macOS .app
         if: runner.os == 'macOS'
@@ -163,7 +162,7 @@ jobs:
           name: osx-x64-app
           path: OB-osx-x64.zip
 
-
+  # ========== 合并创建 Release ==========
   create_release:
     needs: build
     runs-on: ubuntu-latest
@@ -180,9 +179,7 @@ jobs:
 
       - name: Prepare release files
         run: |
-
           cp artifacts/win-x64-installer/OB-win-x64.exe .
-
           cp artifacts/osx-x64-app/OB-osx-x64.zip .
 
       - name: Generate appcast.xml
