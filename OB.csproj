@@ -19,18 +19,9 @@
 		<None Remove="Assets\app-icon.png" />
 	</ItemGroup>
 	<ItemGroup>
-		<Content Include="Assets/favicon.ico" />
-	</ItemGroup>
-	<ItemGroup>
 		<EmbeddedResource Include="Assets\app-icon.png">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</EmbeddedResource>
-	</ItemGroup>
-	<ItemGroup>
-		<None Include="Assets/favicon.ico">
-			<Pack>True</Pack>
-			<PackagePath>\</PackagePath>
-		</None>
 	</ItemGroup>
 	<ItemGroup>
 		<AvaloniaResource Include="Assets\**" />
