@@ -38,15 +38,31 @@ jobs:
             -p:AssemblyVersion=$VERSION.0 `
             -o publish/win-x64
 
+      # ✅ 修改：使用 Chocolatey 安装 Inno Setup（如果未预装）
       - name: Install Inno Setup (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $innosetup_url = "https://jrsoftware.org/download.php/is.exe"
-          $installer = "$env:TEMP\innosetup.exe"
-          Invoke-WebRequest -Uri $innosetup_url -OutFile $installer
-          Start-Process -Wait -FilePath $installer -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-"
+          # 检查是否已安装 Inno Setup
           $isccPath = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (Test-Path $isccPath) {
+            Write-Host "✅ Inno Setup already installed at $isccPath"
+          } else {
+            Write-Host "📦 Installing Inno Setup via Chocolatey..."
+            # 确保 Chocolatey 可用（GitHub Actions 镜像自带 choco）
+            choco install innosetup --no-progress -y
+            # 安装后重新检查路径（可能安装到不同版本目录，比如 "Inno Setup 6"）
+            $possiblePaths = @(
+              "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+              "${env:ProgramFiles(x86)}\Inno Setup\ISCC.exe"
+            )
+            foreach ($path in $possiblePaths) {
+              if (Test-Path $path) {
+                $isccPath = $path
+                break
+              }
+            }
+          }
           echo "ISCC_PATH=$isccPath" >> $env:GITHUB_ENV
 
       - name: Create Inno Setup Script (Windows)
