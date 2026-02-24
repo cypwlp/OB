@@ -39,6 +39,7 @@ namespace OB
             containerRegistry.RegisterForNavigation<MainWin, MainViewModel>();
             containerRegistry.RegisterForNavigation<Home, HomeViewModel>();
             containerRegistry.RegisterForNavigation<Settings, SettingsViewModel>();
+            containerRegistry.RegisterForNavigation<Detect, DetectViewModel>();
         }
 
         public override void OnFrameworkInitializationCompleted()
