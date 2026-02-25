@@ -10,9 +10,7 @@ jobs:
     strategy:
       matrix:
         os: [windows-latest, macos-latest]
-
     runs-on: ${{ matrix.os }}
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -34,15 +32,16 @@ jobs:
         run: |
           $tag = $env:GITHUB_REF
           $VERSION = $tag -replace '^.*/v', ''
-          Write-Host "Building version: $VERSION"
-
+          $FULL_VERSION = "$VERSION.0"
+          Write-Host "Building version: $FULL_VERSION"
           dotnet publish OB.csproj `
             -c Release `
             -r win-x64 `
             --self-contained true `
-            -p:Version=$VERSION `
-            -p:FileVersion=$VERSION.0 `
-            -p:AssemblyVersion=$VERSION.0 `
+            -p:Version=$FULL_VERSION `
+            -p:FileVersion=$FULL_VERSION `
+            -p:AssemblyVersion=$FULL_VERSION `
+            -p:InformationalVersion=$FULL_VERSION `
             -o publish/win-x64
 
       - name: Install Inno Setup (Windows)
@@ -50,11 +49,11 @@ jobs:
         shell: pwsh
         run: |
           $isccPath = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
-          
+         
           if (-not (Test-Path $isccPath)) {
             Write-Host "Installing Inno Setup via Chocolatey..."
             choco install innosetup --no-progress -y
-            
+           
             # 重新尋找可能的安裝路徑
             $possiblePaths = @(
               "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
@@ -67,12 +66,12 @@ jobs:
               }
             }
           }
-          
+         
           if (-not (Test-Path $isccPath)) {
             Write-Error "Inno Setup ISCC.exe not found!"
             exit 1
           }
-          
+         
           echo "ISCC_PATH=$isccPath" >> $env:GITHUB_ENV
           Write-Host "ISCC found at: $isccPath"
 
@@ -82,7 +81,7 @@ jobs:
         run: |
           $tag = $env:GITHUB_REF
           $VERSION = $tag -replace '^.*/v', ''
-          
+         
           $script = @"
           [Setup]
           AppName=OB 檢測系統
@@ -95,19 +94,19 @@ jobs:
           OutputDir=installer
           OutputBaseFilename=OB-win-x64-$VERSION
           PrivilegesRequired=admin
-          ; SetupIconFile=Assets\favicon.ico  ; 若有圖標請取消註解
-          
+          ; SetupIconFile=Assets\favicon.ico ; 若有圖標請取消註解
+         
           [Files]
           Source: "$pwd\publish\win-x64\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-          
+         
           [Icons]
           Name: "{group}\OB 檢測系統"; Filename: "{app}\OB.exe"
           Name: "{autodesktop}\OB 檢測系統"; Filename: "{app}\OB.exe"
-          
+         
           [Run]
           Filename: "{app}\OB.exe"; Description: "啟動 OB 檢測系統"; Flags: postinstall nowait skipifsilent
           "@
-          
+         
           $script | Out-File -FilePath setup.iss -Encoding utf8
 
       - name: Compile Inno Setup (Windows)
@@ -131,15 +130,17 @@ jobs:
         shell: bash
         run: |
           VERSION="${GITHUB_REF#refs/tags/v}"
-          echo "Building version: $VERSION"
-          
+          FULL_VERSION="${VERSION}.0"
+          echo "Building version: $FULL_VERSION"
+         
           dotnet publish OB.csproj \
             -c Release \
             -r osx-x64 \
             --self-contained true \
-            -p:Version=$VERSION \
-            -p:FileVersion=$VERSION.0 \
-            -p:AssemblyVersion=$VERSION.0 \
+            -p:Version=$FULL_VERSION \
+            -p:FileVersion=$FULL_VERSION \
+            -p:AssemblyVersion=$FULL_VERSION \
+            -p:InformationalVersion=$FULL_VERSION \
             -o publish/osx-x64
 
       - name: Create .app bundle (macOS)
@@ -148,12 +149,12 @@ jobs:
         run: |
           VERSION="${GITHUB_REF#refs/tags/v}"
           APP_NAME="OB.app"
-          
+         
           mkdir -p "$APP_NAME/Contents/MacOS"
           mkdir -p "$APP_NAME/Contents/Resources"
-          
+         
           cp -r publish/osx-x64/* "$APP_NAME/Contents/MacOS/"
-          
+         
           cat > "$APP_NAME/Contents/Info.plist" <<EOF
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -207,7 +208,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -219,25 +219,25 @@ jobs:
 
       - name: Prepare release files
         run: |
-          cp artifacts/win-x64-installer/OB-win-x64-*.exe OB-win-x64.exe     || true
-          cp artifacts/osx-x64-zip/OB-osx-x64-*.zip   OB-osx-x64.zip       || true
+          cp artifacts/win-x64-installer/OB-win-x64-*.exe OB-win-x64.exe || true
+          cp artifacts/osx-x64-zip/OB-osx-x64-*.zip OB-osx-x64.zip || true
 
       - name: Generate appcast.xml
         run: |
           VERSION="${GITHUB_REF#refs/tags/v}"
-          # 【核心修改】：強制將版本號補齊為 4 位，解決 3.0.3.0 比 3.0.5 大的潛在解析問題
-          FULL_VERSION="$VERSION.0" 
+          # 強制補成 4 段版本號（解決 NetSparkle 比對問題）
+          FULL_VERSION="$VERSION.0"
           DATE=$(date -u +"%a, %d %b %Y %H:%M:%S +0000")
-          
+         
           WIN_FILE="OB-win-x64.exe"
           OSX_FILE="OB-osx-x64.zip"
-          
+         
           WIN_URL="https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$WIN_FILE"
           OSX_URL="https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$OSX_FILE"
-          
+         
           WIN_SIZE=$(stat -c%s "$WIN_FILE" 2>/dev/null || echo 0)
           OSX_SIZE=$(stat -c%s "$OSX_FILE" 2>/dev/null || echo 0)
-          
+         
           cat > appcast.xml <<EOF
           <?xml version="1.0" encoding="UTF-8"?>
           <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
