@@ -6,6 +6,7 @@
              mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="520"
              xmlns:md="clr-namespace:Material.Styles.Controls;assembly=Material.Styles"
              x:DataType="dialogs:LoginViewModel"
+			 
              x:Class="OB.Views.Dialogs.Login">
 	<Grid Background="#F8FAFC">
 				<Canvas>

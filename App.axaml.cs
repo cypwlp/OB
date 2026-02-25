@@ -60,19 +60,19 @@ namespace OB
         private async Task CheckForUpdatesAsync()
         {
             _debugLogs.Clear();
-            _debugLogs.AppendLine($"--- 更新檢查診斷報告 ({DateTime.Now}) ---");
+            _debugLogs.AppendLine("--- Update Diagnostic Report ---");
 
             try
             {
                 ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12 | SecurityProtocolType.Tls13;
-                string appcastUrl = "https://github.com/cypwlp/OB/releases/latest/download/appcast.xml";
+                string appcastUrl = @"https://github.com/cypwlp/OB/releases/latest/download/appcast.xml";
 
                 var assembly = Assembly.GetEntryAssembly();
                 var currentVersion = assembly?.GetName().Version ?? new Version(0, 0, 0, 0);
                 string assemblyPath = System.Environment.ProcessPath ?? assembly?.Location ?? "";
 
-                _debugLogs.AppendLine($"[本地版本] {currentVersion}");
-                _debugLogs.AppendLine($"[檔案路徑] {assemblyPath}");
+                _debugLogs.AppendLine("[Local Version] " + currentVersion.ToString());
+                _debugLogs.AppendLine("[App Path] " + assemblyPath);
 
                 _sparkle = new SparkleUpdater(appcastUrl, new Ed25519Checker(SecurityMode.Unsafe), assemblyPath)
                 {
@@ -80,54 +80,51 @@ namespace OB
                     RelaunchAfterUpdate = true
                 };
 
-                // 修正：NetSparkle 3.0.3 的 DownloadStarted 只有 2 個參數 (item, path)
-                _sparkle.DownloadStarted += (item, path) => _debugLogs.AppendLine($"[下載] 開始下載: {item.Version}");
+                // NetSparkle 3.0.3 Events
+                _sparkle.DownloadStarted += (item, path) => _debugLogs.AppendLine("[Download] Started: " + item.Version);
 
-                // 修正：NetSparkle 3.0.3 的 DownloadFinished 只有 2 個參數 (item, path)
                 _sparkle.DownloadFinished += (item, path) =>
                 {
-                    _debugLogs.AppendLine($"[下載] 成功！存儲於: {path}");
+                    _debugLogs.AppendLine("[Download] Success! Path: " + path);
                     _updateInstallerPath = path;
                     _isUpdateReady = true;
                     UpdateReadyToInstall?.Invoke(null, EventArgs.Empty);
                 };
 
-                // 修正：事件名稱為 DownloadHadError，參數為 (item, path, exception)
                 _sparkle.DownloadHadError += (item, path, exception) =>
                 {
-                    string errMsg = $"[錯誤] 下載失敗！原因: {exception.Message}";
+                    string errMsg = "[Error] Download Failed: " + exception.Message;
                     _debugLogs.AppendLine(errMsg);
-                    ShowDebugError("下載更新包失敗", errMsg);
+                    ShowDebugError("Download Error", errMsg);
                 };
 
                 var updateInfo = await _sparkle.CheckForUpdatesQuietly();
-                _debugLogs.AppendLine($"[NetSparkle狀態] {updateInfo.Status}");
+                _debugLogs.AppendLine("[Status] " + updateInfo.Status.ToString());
 
                 if (updateInfo.Status == UpdateStatus.UpdateAvailable && updateInfo.Updates?.Count > 0)
                 {
                     _updateItem = updateInfo.Updates[0];
-                    _debugLogs.AppendLine($"[偵測到新版本] {_updateItem.Version}");
+                    _debugLogs.AppendLine("[New Version Found] " + _updateItem.Version);
 
                     if (new Version(_updateItem.Version) > currentVersion)
                     {
-                        _debugLogs.AppendLine("[動作] 啟動背景下載...");
+                        _debugLogs.AppendLine("[Action] Initializing background download...");
                         await _sparkle.InitAndBeginDownload(_updateItem);
                     }
                     else
                     {
-                        _debugLogs.AppendLine("[忽略] 雲端版本不比本地高。");
+                        _debugLogs.AppendLine("[Skip] New version is not higher than local.");
                     }
                 }
                 else
                 {
-                    // 使用 else 處理所有「不需要更新」的情況 (UpdateNotAvailable, CouldNotDetermine 等)
-                    _debugLogs.AppendLine($"[結果] 目前不執行更新。狀態碼: {updateInfo.Status}");
+                    _debugLogs.AppendLine("[Result] No update needed. Status: " + updateInfo.Status.ToString());
                 }
             }
             catch (Exception ex)
             {
-                _debugLogs.AppendLine($"[崩潰] {ex.Message}");
-                ShowDebugError("更新檢查過程出錯", _debugLogs.ToString());
+                _debugLogs.AppendLine("[Crash] " + ex.Message);
+                ShowDebugError("Check Update Exception", _debugLogs.ToString());
             }
         }
 
@@ -137,7 +134,7 @@ namespace OB
             {
                 var tipText = new TextBlock
                 {
-                    Text = "?? 請截圖此視窗回報給開發者",
+                    Text = "Update Notification (Diagnostic)",
                     Margin = new Thickness(10),
                     Foreground = Brushes.Red,
                     FontWeight = FontWeight.Bold
@@ -159,7 +156,7 @@ namespace OB
 
                 var win = new Window
                 {
-                    Title = "?? 更新診斷助手 - " + title,
+                    Title = "Debug - " + title,
                     Width = 600,
                     Height = 450,
                     WindowStartupLocation = WindowStartupLocation.CenterScreen,
