@@ -61,48 +61,8 @@ namespace OB.ViewModels
             // 2. 命令綁定
             ToggleMenuCommand = new DelegateCommand(() => IsMenuExpanded = !IsMenuExpanded);
             SelectMenuItemCommand = new DelegateCommand<LeftMenuItem>(menuItem => _ = NavigateAsync(menuItem));
-
-            // 預設選中第一項
             _selectedMenuItem = MenuItems.FirstOrDefault()!;
 
-            // 【核心修復】：在主界面構造時，啟動異步延遲更新檢查
-            // 這樣可以避開登錄窗口（Login Dialog）關閉時的焦點衝突
-            _ = CheckForUpdatesDelayedAsync();
-        }
-
-        /// <summary>
-        /// 進入主界面後，延遲檢查更新。
-        /// 這樣可以確保 Login 對話框已經完全關閉，且主窗口已經獲取焦點。
-        /// </summary>
-        private async Task CheckForUpdatesDelayedAsync()
-        {
-            // 延遲 3 秒，給用戶一點緩衝時間進入系統
-            await Task.Delay(3000);
-
-            if (App.SparkleInstance != null)
-            {
-                try
-                {
-                    // 1. 在後台線程檢查是否有更新（Quietly 不會彈出任何 UI）
-                    var updateInfo = await App.SparkleInstance.CheckForUpdatesQuietly();
-
-                    // 2. 判斷狀態是否為「有可用更新」
-                    if (updateInfo.Status == NetSparkleUpdater.Enums.UpdateStatus.UpdateAvailable && updateInfo.Updates != null)
-                    {
-                        // 3. 關鍵：必須切換回 Avalonia 的 UI 線程來彈出更新窗口
-                        Dispatcher.UIThread.Post(() =>
-                        {
-                            // 將更新列表傳給 NetSparkle 的原生 UI 進行展示
-                            App.SparkleInstance.ShowUpdateNeededUI(new List<AppCastItem>(updateInfo.Updates));
-                        });
-                    }
-                }
-                catch (Exception ex)
-                {
-                    // 打印錯誤日誌，方便調試
-                    System.Diagnostics.Debug.WriteLine($"[Update Check Error] {ex.Message}");
-                }
-            }
         }
 
         // --- 導航邏輯 ---

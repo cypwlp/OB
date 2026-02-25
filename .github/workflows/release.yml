@@ -24,7 +24,7 @@ jobs:
         run: dotnet restore
 
       # ────────────────────────────────────────────────
-      # Windows 部分：使用 Inno Setup 打包
+      # Windows 部分：打包成 Inno Setup 安裝檔
       # ────────────────────────────────────────────────
       - name: Publish Windows (self-contained)
         if: runner.os == 'Windows'
@@ -33,7 +33,7 @@ jobs:
           $tag = $env:GITHUB_REF
           $VERSION = $tag -replace '^.*/v', ''
           $FULL_VERSION = "$VERSION.0"
-          Write-Host "Building version: $FULL_VERSION"
+          Write-Host "Building Windows Version: $FULL_VERSION"
           dotnet publish OB.csproj `
             -c Release `
             -r win-x64 `
@@ -49,31 +49,11 @@ jobs:
         shell: pwsh
         run: |
           $isccPath = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
-         
           if (-not (Test-Path $isccPath)) {
-            Write-Host "Installing Inno Setup via Chocolatey..."
+            Write-Host "Installing Inno Setup..."
             choco install innosetup --no-progress -y
-           
-            # 重新尋找可能的安裝路徑
-            $possiblePaths = @(
-              "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
-              "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
-            )
-            foreach ($path in $possiblePaths) {
-              if (Test-Path $path) {
-                $isccPath = $path
-                break
-              }
-            }
           }
-         
-          if (-not (Test-Path $isccPath)) {
-            Write-Error "Inno Setup ISCC.exe not found!"
-            exit 1
-          }
-         
           echo "ISCC_PATH=$isccPath" >> $env:GITHUB_ENV
-          Write-Host "ISCC found at: $isccPath"
 
       - name: Create Inno Setup Script (Windows)
         if: runner.os == 'Windows'
@@ -81,7 +61,6 @@ jobs:
         run: |
           $tag = $env:GITHUB_REF
           $VERSION = $tag -replace '^.*/v', ''
-         
           $script = @"
           [Setup]
           AppName=OB 檢測系統
@@ -92,21 +71,19 @@ jobs:
           Compression=lzma2
           SolidCompression=yes
           OutputDir=installer
-          OutputBaseFilename=OB-win-x64-$VERSION
+          OutputBaseFilename=OB-win-x64
           PrivilegesRequired=admin
-          ; SetupIconFile=Assets\favicon.ico ; 若有圖標請取消註解
-         
+          
           [Files]
           Source: "$pwd\publish\win-x64\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-         
+          
           [Icons]
           Name: "{group}\OB 檢測系統"; Filename: "{app}\OB.exe"
           Name: "{autodesktop}\OB 檢測系統"; Filename: "{app}\OB.exe"
-         
+          
           [Run]
           Filename: "{app}\OB.exe"; Description: "啟動 OB 檢測系統"; Flags: postinstall nowait skipifsilent
           "@
-         
           $script | Out-File -FilePath setup.iss -Encoding utf8
 
       - name: Compile Inno Setup (Windows)
@@ -115,15 +92,15 @@ jobs:
         run: |
           & "$env:ISCC_PATH" setup.iss
 
-      - name: Upload Windows installer artifact
+      - name: Upload Windows artifact
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
           name: win-x64-installer
-          path: installer/OB-win-x64-*.exe
+          path: installer/OB-win-x64.exe
 
       # ────────────────────────────────────────────────
-      # macOS 部分：打包成 .app 再壓縮 zip
+      # macOS 部分：打包成 .app 再壓縮為 zip
       # ────────────────────────────────────────────────
       - name: Publish macOS (self-contained)
         if: runner.os == 'macOS'
@@ -131,8 +108,6 @@ jobs:
         run: |
           VERSION="${GITHUB_REF#refs/tags/v}"
           FULL_VERSION="${VERSION}.0"
-          echo "Building version: $FULL_VERSION"
-         
           dotnet publish OB.csproj \
             -c Release \
             -r osx-x64 \
@@ -149,12 +124,10 @@ jobs:
         run: |
           VERSION="${GITHUB_REF#refs/tags/v}"
           APP_NAME="OB.app"
-         
           mkdir -p "$APP_NAME/Contents/MacOS"
           mkdir -p "$APP_NAME/Contents/Resources"
-         
           cp -r publish/osx-x64/* "$APP_NAME/Contents/MacOS/"
-         
+          
           cat > "$APP_NAME/Contents/Info.plist" <<EOF
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -185,23 +158,18 @@ jobs:
           </dict>
           </plist>
           EOF
-
-      - name: Zip macOS .app
-        if: runner.os == 'macOS'
-        shell: bash
-        run: |
-          VERSION="${GITHUB_REF#refs/tags/v}"
-          zip -r "OB-osx-x64-$VERSION.zip" OB.app
+          
+          zip -r "OB-osx-x64.zip" OB.app
 
       - name: Upload macOS artifact
         if: runner.os == 'macOS'
         uses: actions/upload-artifact@v4
         with:
           name: osx-x64-zip
-          path: OB-osx-x64-*.zip
+          path: OB-osx-x64.zip
 
   # ────────────────────────────────────────────────
-  # 建立 GitHub Release + 上傳檔案 + 生成 appcast.xml
+  # 建立 GitHub Release 並使用工具生成帶簽名的 appcast.xml
   # ────────────────────────────────────────────────
   create_release:
     needs: build
@@ -217,54 +185,35 @@ jobs:
         with:
           path: artifacts
 
-      - name: Prepare release files
-        run: |
-          cp artifacts/win-x64-installer/OB-win-x64-*.exe OB-win-x64.exe || true
-          cp artifacts/osx-x64-zip/OB-osx-x64-*.zip OB-osx-x64.zip || true
+      - name: Install NetSparkle AppCast Generator
+        run: dotnet tool install --global NetSparkleUpdater.Tools.AppCastGenerator
 
-      - name: Generate appcast.xml
+      - name: Prepare Assets and Generate Signed AppCast
+        shell: bash
+        env:
+          PRIVATE_KEY: ${{ secrets.NETSPARKLE_PRIVATE_KEY }}
         run: |
+          mkdir release_binaries
+          # 移動檔案並統一名稱
+          cp artifacts/win-x64-installer/OB-win-x64.exe release_binaries/
+          cp artifacts/osx-x64-zip/OB-osx-x64.zip release_binaries/
+          
           VERSION="${GITHUB_REF#refs/tags/v}"
-          # 強制補成 4 段版本號（解決 NetSparkle 比對問題）
-          FULL_VERSION="$VERSION.0"
-          DATE=$(date -u +"%a, %d %b %Y %H:%M:%S +0000")
-         
-          WIN_FILE="OB-win-x64.exe"
-          OSX_FILE="OB-osx-x64.zip"
-         
-          WIN_URL="https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$WIN_FILE"
-          OSX_URL="https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$OSX_FILE"
-         
-          WIN_SIZE=$(stat -c%s "$WIN_FILE" 2>/dev/null || echo 0)
-          OSX_SIZE=$(stat -c%s "$OSX_FILE" 2>/dev/null || echo 0)
-         
-          cat > appcast.xml <<EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
-            <channel>
-              <title>OB 檢測系統 Updates</title>
-              <item>
-                <title>Version $VERSION</title>
-                <pubDate>$DATE</pubDate>
-                <sparkle:version>$FULL_VERSION</sparkle:version>
-                <sparkle:releaseNotesLink>https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}</sparkle:releaseNotesLink>
-                <enclosure
-                  url="$WIN_URL"
-                  sparkle:os="windows"
-                  sparkle:installerArguments="/VERYSILENT /SUPPRESSMSGBOXES /NORESTART"
-                  sparkle:installerType="inno"
-                  length="$WIN_SIZE"
-                  type="application/octet-stream" />
-                <enclosure
-                  url="$OSX_URL"
-                  sparkle:os="macos"
-                  sparkle:installerType="application"
-                  length="$OSX_SIZE"
-                  type="application/zip" />
-              </item>
-            </channel>
-          </rss>
-          EOF
+          
+          # 調用工具生成 appcast.xml (包含數位簽名)
+          # 注意：URL 必須指向你的 Release 下載地址
+          netsparkle-generate-appcast \
+            -n "OB 檢測系統" \
+            -u "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/" \
+            -b release_binaries \
+            -e "exe,zip" \
+            --private-key-override "$PRIVATE_KEY" \
+            --human-readable \
+            --file-version "$VERSION.0" \
+            --output-file-name appcast
+          
+          # 工具生成的文件名通常會是 appcast.xml，檢查一下
+          ls -R
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -272,8 +221,8 @@ jobs:
           name: Release ${{ github.ref_name }}
           tag_name: ${{ github.ref_name }}
           files: |
-            OB-win-x64.exe
-            OB-osx-x64.zip
+            release_binaries/OB-win-x64.exe
+            release_binaries/OB-osx-x64.zip
             appcast.xml
           draft: false
           prerelease: false
