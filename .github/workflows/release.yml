@@ -99,7 +99,7 @@ jobs:
           # 根據作業系統設定圖標與 bundle ID
           if [ "${{ runner.os }}" == "macOS" ]; then
             PACK_ARGS+=(--icon "./Assets/app-icon.icns")
-            PACK_ARGS+=(--bundleId "com.yourcompany.ob")   # 請替換為您的實際 bundle ID
+            PACK_ARGS+=(--bundleId "com.yourcompany.ob")   # ⚠️ 請替換為您的實際 bundle ID
           elif [ "${{ runner.os }}" == "Windows" ]; then
             PACK_ARGS+=(--icon "./Assets/app-icon.ico")
           else
@@ -109,9 +109,10 @@ jobs:
 
           vpk pack "${PACK_ARGS[@]}"
 
-      # 【偵錯】列出 Releases 目錄內容，確認檔案產生
+      # 【偵錯】列出 Releases 目錄內容，確認檔案產生（使用 bash shell 確保跨平台相容）
       - name: List Release Directory
         run: ls -la ./Releases
+        shell: bash
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
@@ -123,7 +124,7 @@ jobs:
             ./Releases/*.zip
             ./Releases/*.AppImage
             ./Releases/RELEASES*
-            ./Releases/releases.*.json   
+            ./Releases/releases.*.json  
           tag_name: ${{ github.ref_name }}
           generate_release_notes: true
         env:
