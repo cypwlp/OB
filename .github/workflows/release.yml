@@ -109,6 +109,10 @@ jobs:
 
           vpk pack "${PACK_ARGS[@]}"
 
+      # 【偵錯】列出 Releases 目錄內容，確認檔案產生
+      - name: List Release Directory
+        run: ls -la ./Releases
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
@@ -119,6 +123,7 @@ jobs:
             ./Releases/*.zip
             ./Releases/*.AppImage
             ./Releases/RELEASES*
+            ./Releases/releases.*.json   
           tag_name: ${{ github.ref_name }}
           generate_release_notes: true
         env:
