@@ -16,7 +16,7 @@
     </Application.Resources>
   
     <Application.Styles>
-        <themes:MaterialTheme BaseTheme="Dark" PrimaryColor="Indigo" SecondaryColor="Amber" />
+        <themes:MaterialTheme BaseTheme="Light" PrimaryColor="Indigo" SecondaryColor="Amber" />
 		<StyleInclude Source="avares://DialogHost.Avalonia/Styles.xaml"/>
 <materialIcons:MaterialIconStyles />
        <Style Selector="Window, UserControl">
