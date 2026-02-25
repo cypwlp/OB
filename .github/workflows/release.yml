@@ -54,12 +54,21 @@ jobs:
         run: |
           vpk download github --repoUrl https://github.com/${{ github.repository }} --outputDir ./Releases
 
-      # macOS 需要將 PNG 圖標轉換為 .icns 格式
+      # Windows 平台：將 PNG 轉換為 ICO
+      - name: Install ImageMagick (Windows)
+        if: runner.os == 'Windows'
+        run: choco install imagemagick -y
+
+      - name: Convert PNG to ICO (Windows only)
+        if: runner.os == 'Windows'
+        run: |
+          magick convert ./Assets/app-icon.png -define icon:auto-resize=256,128,64,48,32,16 ./Assets/app-icon.ico
+
+      # macOS 平台：將 PNG 轉換為 ICNS
       - name: Convert PNG to ICNS (macOS only)
         if: runner.os == 'macOS'
         run: |
           mkdir -p AppIcon.iconset
-          # 產生多種尺寸圖標（可根據需要增減）
           sips -z 16 16     Assets/app-icon.png --out AppIcon.iconset/icon_16x16.png
           sips -z 32 32     Assets/app-icon.png --out AppIcon.iconset/icon_16x16@2x.png
           sips -z 32 32     Assets/app-icon.png --out AppIcon.iconset/icon_32x32.png
@@ -70,7 +79,6 @@ jobs:
           sips -z 512 512   Assets/app-icon.png --out AppIcon.iconset/icon_256x256@2x.png
           sips -z 512 512   Assets/app-icon.png --out AppIcon.iconset/icon_512x512.png
           sips -z 1024 1024 Assets/app-icon.png --out AppIcon.iconset/icon_512x512@2x.png
-          # 轉換為 .icns
           iconutil -c icns AppIcon.iconset -o Assets/app-icon.icns
 
       - name: Velopack Pack
@@ -90,11 +98,12 @@ jobs:
 
           # 根據作業系統設定圖標與 bundle ID
           if [ "${{ runner.os }}" == "macOS" ]; then
-            # macOS 使用 .icns 圖標
             PACK_ARGS+=(--icon "./Assets/app-icon.icns")
             PACK_ARGS+=(--bundleId "com.yourcompany.ob")   # 請替換為您的實際 bundle ID
+          elif [ "${{ runner.os }}" == "Windows" ]; then
+            PACK_ARGS+=(--icon "./Assets/app-icon.ico")
           else
-            # Windows 與 Linux 使用 .png 圖標
+            # Linux
             PACK_ARGS+=(--icon "./Assets/app-icon.png")
           fi
 
