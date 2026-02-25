@@ -1,4 +1,4 @@
-name: Build and Release
+name: Publish Release
 
 on:
   push:
@@ -6,277 +6,92 @@ on:
       - 'v*'
 
 jobs:
-  build:
+  publish:
+    name: Publish for ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [windows-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+        # 包含三種作業系統
+        include:
+          - os: windows-latest
+            rid: win-x64
+            executable: OB.exe
+          - os: macos-latest
+            rid: osx-x64
+            executable: OB
+          - os: ubuntu-22.04
+            rid: linux-x64
+            executable: OB
 
-      - name: Setup .NET 8
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
 
-      - name: Restore dependencies
-        run: dotnet restore
+      - name: Install Velopack CLI
+        run: dotnet tool install -g vpk
 
-      # ────────────────────────────────────────────────
-      # Windows 部分：使用 Inno Setup 打包
-      # ────────────────────────────────────────────────
-      - name: Publish Windows (self-contained)
-        if: runner.os == 'Windows'
-        shell: pwsh
+      # Linux 環境需要額外安裝工具來打包 AppImage
+      - name: Install Linux Dependencies
+        if: runner.os == 'Linux'
         run: |
-          $tag = $env:GITHUB_REF
-          $VERSION = $tag -replace '^.*/v', ''
-          $FULL_VERSION = "$VERSION.0"
-          Write-Host "Building version: $FULL_VERSION"
-          dotnet publish OB.csproj `
-            -c Release `
-            -r win-x64 `
-            --self-contained true `
-            -p:Version=$FULL_VERSION `
-            -p:FileVersion=$FULL_VERSION `
-            -p:AssemblyVersion=$FULL_VERSION `
-            -p:InformationalVersion=$FULL_VERSION `
-            -o publish/win-x64
+          sudo apt-get update
+          sudo apt-get install -y libfuse2 desktop-file-utils libglib2.0-bin
 
-      - name: Install Inno Setup (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
+      - name: Publish Application
         run: |
-          $isccPath = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
-         
-          if (-not (Test-Path $isccPath)) {
-            Write-Host "Installing Inno Setup via Chocolatey..."
-            choco install innosetup --no-progress -y
-           
-            # 重新尋找可能的安裝路徑
-            $possiblePaths = @(
-              "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
-              "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
-            )
-            foreach ($path in $possiblePaths) {
-              if (Test-Path $path) {
-                $isccPath = $path
-                break
-              }
-            }
-          }
-         
-          if (-not (Test-Path $isccPath)) {
-            Write-Error "Inno Setup ISCC.exe not found!"
-            exit 1
-          }
-         
-          echo "ISCC_PATH=$isccPath" >> $env:GITHUB_ENV
-          Write-Host "ISCC found at: $isccPath"
+          dotnet publish -c Release --runtime ${{ matrix.rid }} --self-contained true -o ./publish
 
-      - name: Create Inno Setup Script (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
+      - name: Sync Previous Releases (Delta Updates)
+        continue-on-error: true
+        # vpk download 會根據當前 OS 下載對應的歷史版本
         run: |
-          $tag = $env:GITHUB_REF
-          $VERSION = $tag -replace '^.*/v', ''
-         
-          $script = @"
-          [Setup]
-          AppName=OB 檢測系統
-          AppVersion=$VERSION
-          DefaultDirName={autopf}\OB
-          DefaultGroupName=OB
-          UninstallDisplayIcon={app}\OB.exe
-          Compression=lzma2
-          SolidCompression=yes
-          OutputDir=installer
-          OutputBaseFilename=OB-win-x64-$VERSION
-          PrivilegesRequired=admin
-          ; SetupIconFile=Assets\favicon.ico ; 若有圖標請取消註解
-         
-          [Files]
-          Source: "$pwd\publish\win-x64\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-         
-          [Icons]
-          Name: "{group}\OB 檢測系統"; Filename: "{app}\OB.exe"
-          Name: "{autodesktop}\OB 檢測系統"; Filename: "{app}\OB.exe"
-         
-          [Run]
-          Filename: "{app}\OB.exe"; Description: "啟動 OB 檢測系統"; Flags: postinstall nowait skipifsilent
-          "@
-         
-          $script | Out-File -FilePath setup.iss -Encoding utf8
+          vpk download github --repoUrl https://github.com/${{ github.repository }} --outputDir ./Releases
 
-      - name: Compile Inno Setup (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          & "$env:ISCC_PATH" setup.iss
-
-      - name: Upload Windows installer artifact
-        if: runner.os == 'Windows'
-        uses: actions/upload-artifact@v4
-        with:
-          name: win-x64-installer
-          path: installer/OB-win-x64-*.exe
-
-      # ────────────────────────────────────────────────
-      # macOS 部分：打包成 .app 再壓縮 zip
-      # ────────────────────────────────────────────────
-      - name: Publish macOS (self-contained)
-        if: runner.os == 'macOS'
+      - name: Velopack Pack
         shell: bash
         run: |
-          VERSION="${GITHUB_REF#refs/tags/v}"
-          FULL_VERSION="${VERSION}.0"
-          echo "Building version: $FULL_VERSION"
-         
-          dotnet publish OB.csproj \
-            -c Release \
-            -r osx-x64 \
-            --self-contained true \
-            -p:Version=$FULL_VERSION \
-            -p:FileVersion=$FULL_VERSION \
-            -p:AssemblyVersion=$FULL_VERSION \
-            -p:InformationalVersion=$FULL_VERSION \
-            -o publish/osx-x64
+          # 基礎參數
+          PACK_ARGS=(
+            --packId "OB"
+            --packVersion "${{ github.ref_name }}"
+            --packDir "./publish"
+            --mainExe "${{ matrix.executable }}"
+            --outputDir "./Releases"
+            --icon "./Assets/app-icon.png"
+          )
 
-      - name: Create .app bundle (macOS)
-        if: runner.os == 'macOS'
-        shell: bash
-        run: |
-          VERSION="${GITHUB_REF#refs/tags/v}"
-          APP_NAME="OB.app"
-         
-          mkdir -p "$APP_NAME/Contents/MacOS"
-          mkdir -p "$APP_NAME/Contents/Resources"
-         
-          cp -r publish/osx-x64/* "$APP_NAME/Contents/MacOS/"
-         
-          cat > "$APP_NAME/Contents/Info.plist" <<EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>CFBundleName</key>
-            <string>OB</string>
-            <key>CFBundleDisplayName</key>
-            <string>OB 檢測系統</string>
-            <key>CFBundleIdentifier</key>
-            <string>com.yourcompany.OB</string>
-            <key>CFBundleVersion</key>
-            <string>$VERSION</string>
-            <key>CFBundleShortVersionString</key>
-            <string>$VERSION</string>
-            <key>CFBundlePackageType</key>
-            <string>APPL</string>
-            <key>CFBundleSignature</key>
-            <string>????</string>
-            <key>CFBundleExecutable</key>
-            <string>OB</string>
-            <key>LSMinimumSystemVersion</key>
-            <string>10.13</string>
-            <key>NSPrincipalClass</key>
-            <string>NSApplication</string>
-            <key>NSHighResolutionCapable</key>
-            <true/>
-          </dict>
-          </plist>
-          EOF
+          # macOS 額外需要的參數
+          if [ "${{ runner.os }}" == "macOS" ]; then
+            PACK_ARGS+=(--bundleId "com.yourcompany.ob")
+          fi
 
-      - name: Zip macOS .app
-        if: runner.os == 'macOS'
-        shell: bash
-        run: |
-          VERSION="${GITHUB_REF#refs/tags/v}"
-          zip -r "OB-osx-x64-$VERSION.zip" OB.app
-
-      - name: Upload macOS artifact
-        if: runner.os == 'macOS'
-        uses: actions/upload-artifact@v4
-        with:
-          name: osx-x64-zip
-          path: OB-osx-x64-*.zip
-
-  # ────────────────────────────────────────────────
-  # 建立 GitHub Release + 上傳檔案 + 生成 appcast.xml
-  # ────────────────────────────────────────────────
-  create_release:
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      - name: Prepare release files
-        run: |
-          cp artifacts/win-x64-installer/OB-win-x64-*.exe OB-win-x64.exe || true
-          cp artifacts/osx-x64-zip/OB-osx-x64-*.zip OB-osx-x64.zip || true
-
-      - name: Generate appcast.xml
-        run: |
-          VERSION="${GITHUB_REF#refs/tags/v}"
-          # 強制補成 4 段版本號（解決 NetSparkle 比對問題）
-          FULL_VERSION="$VERSION.0"
-          DATE=$(date -u +"%a, %d %b %Y %H:%M:%S +0000")
-         
-          WIN_FILE="OB-win-x64.exe"
-          OSX_FILE="OB-osx-x64.zip"
-         
-          WIN_URL="https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$WIN_FILE"
-          OSX_URL="https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$OSX_FILE"
-         
-          WIN_SIZE=$(stat -c%s "$WIN_FILE" 2>/dev/null || echo 0)
-          OSX_SIZE=$(stat -c%s "$OSX_FILE" 2>/dev/null || echo 0)
-         
-          cat > appcast.xml <<EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
-            <channel>
-              <title>OB 檢測系統 Updates</title>
-              <item>
-                <title>Version $VERSION</title>
-                <pubDate>$DATE</pubDate>
-                <sparkle:version>$FULL_VERSION</sparkle:version>
-                <sparkle:releaseNotesLink>https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}</sparkle:releaseNotesLink>
-                <enclosure
-                  url="$WIN_URL"
-                  sparkle:os="windows"
-                  sparkle:installerArguments="/VERYSILENT /SUPPRESSMSGBOXES /NORESTART"
-                  sparkle:installerType="inno"
-                  length="$WIN_SIZE"
-                  type="application/octet-stream" />
-                <enclosure
-                  url="$OSX_URL"
-                  sparkle:os="macos"
-                  sparkle:installerType="application"
-                  length="$OSX_SIZE"
-                  type="application/zip" />
-              </item>
-            </channel>
-          </rss>
-          EOF
+          vpk pack "${PACK_ARGS[@]}"
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v1
         with:
-          name: Release ${{ github.ref_name }}
-          tag_name: ${{ github.ref_name }}
+          # 上傳所有生成的安裝包與更新數據
+          # Windows: .exe, .nupkg
+          # macOS: .pkg, .zip
+          # Linux: .AppImage
           files: |
-            OB-win-x64.exe
-            OB-osx-x64.zip
-            appcast.xml
-          draft: false
-          prerelease: false
+            ./Releases/*.exe
+            ./Releases/*.nupkg
+            ./Releases/*.pkg
+            ./Releases/*.zip
+            ./Releases/*.AppImage
+            ./Releases/RELEASES*
+          tag_name: ${{ github.ref_name }}
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

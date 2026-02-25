@@ -1,24 +1,19 @@
 ﻿using Prism.Dialogs;
 using Prism.Mvvm;
 using Prism.Commands;
-using NetSparkleUpdater;
+using Velopack;
 
 namespace OB.ViewModels.Dialogs
 {
     public class UpdateViewModel : BindableBase, IDialogAware
     {
-        private AppCastItem? _updateInfo;
-        public AppCastItem? UpdateInfo
+        private UpdateInfo? _updateInfo;
+        public UpdateInfo? UpdateInfo
         {
             get => _updateInfo;
-            set
-            {
-                if (SetProperty(ref _updateInfo, value))
-                    RaisePropertyChanged(nameof(NewVersion));
-            }
+            set => SetProperty(ref _updateInfo, value);
         }
-
-        public string NewVersion => UpdateInfo?.Version ?? "未知版本";
+        public string NewVersion => UpdateInfo?.TargetFullRelease?.Version.ToString() ?? "未知版本";
 
         public DialogCloseListener RequestClose { get; private set; }
 
@@ -36,7 +31,7 @@ namespace OB.ViewModels.Dialogs
 
         public void OnDialogOpened(IDialogParameters parameters)
         {
-            if (parameters.TryGetValue<AppCastItem>("UpdateInfo", out var info))
+            if (parameters.TryGetValue<UpdateInfo>("UpdateInfo", out var info))
             {
                 UpdateInfo = info;
             }

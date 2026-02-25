@@ -22,6 +22,8 @@ using System.Collections.Generic; // 必須引用，為了使用 List<>
 using System.Net;
 using System.Reflection;
 using System.Threading.Tasks;
+using Velopack;
+using Velopack.Sources;
 
 namespace OB
 {
@@ -56,46 +58,35 @@ namespace OB
         {
             try
             {
-                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12 | SecurityProtocolType.Tls13;
-                string appcastUrl = @"https://github.com/cypwlp/OB/releases/latest/download/appcast.xml";
+                // 1. 配置更新源 (指向你的 GitHub Repo)
+                var mgr = new UpdateManager(new GithubSource("https://github.com/cypwlp/OB", null, false));
 
-                var assembly = Assembly.GetEntryAssembly();
-                string assemblyPath = Environment.ProcessPath ?? assembly?.Location ?? "";
+                // 2. 檢查是否有更新
+                var newVersion = await mgr.CheckForUpdatesAsync();
+                if (newVersion == null) return;
 
-                // 注意：這裡不需要設定 UIFactory 了，因為我們要自己寫 UI
-                SparkleInstance = new SparkleUpdater(appcastUrl, new Ed25519Checker(SecurityMode.Unsafe), assemblyPath)
+                // 3. 切換到 UI 線程彈出通知
+                Dispatcher.UIThread.Post(() =>
                 {
-                    RelaunchAfterUpdate = true,
-                    RestartExecutableName = "OB.exe",
-                    UserInteractionMode = UserInteractionMode.DownloadAndInstall
-                };
+                    var dialogService = Container.Resolve<IDialogService>();
+                    var parameters = new DialogParameters { { "UpdateInfo", newVersion } };
 
-                // 1. 靜默檢查更新
-                var updateInfo = await SparkleInstance.CheckForUpdatesQuietly();
-
-                if (updateInfo.Status == UpdateStatus.UpdateAvailable && updateInfo.Updates?.Count > 0)
-                {
-                    var latestUpdate = updateInfo.Updates[0];
-
-                    // 2. 切換到 UI 線程，使用 Prism DialogService 彈出你的自定義視窗
-                    Dispatcher.UIThread.Post(() =>
+                    dialogService.ShowDialog("UpdateDialog", parameters, async result =>
                     {
-                        var dialogService = Container.Resolve<IDialogService>();
-                        var parameters = new DialogParameters { { "UpdateInfo", latestUpdate } };
-
-                        dialogService.ShowDialog("UpdateDialog", parameters, result =>
+                        if (result.Result == ButtonResult.OK)
                         {
-                            if (result.Result == ButtonResult.OK)
-                            {
-                                SparkleInstance?.InstallUpdate(latestUpdate);
-                            }
-                        });
+                            // 4. 下載更新 (增量更新會自動處理)
+                            await mgr.DownloadUpdatesAsync(newVersion);
+
+                            // 5. 套用更新並重啟
+                            mgr.ApplyUpdatesAndRestart(newVersion);
+                        }
                     });
-                }
+                });
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[Update Error] {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[Velopack Error] {ex.Message}");
             }
         }
 
