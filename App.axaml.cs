@@ -2,11 +2,6 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
-using DryIoc.ImTools;
-using NetSparkleUpdater;
-using NetSparkleUpdater.Enums;
-using NetSparkleUpdater.SignatureVerifiers;
-using NetSparkleUpdater.UI.Avalonia; // 確保有引用這個
 using OB.Models;
 using OB.Tools;
 using OB.ViewModels;
@@ -18,9 +13,6 @@ using Prism.DryIoc;
 using Prism.Ioc;
 using Prism.Navigation.Regions;
 using System;
-using System.Collections.Generic; // 必須引用，為了使用 List<>
-using System.Net;
-using System.Reflection;
 using System.Threading.Tasks;
 using Velopack;
 using Velopack.Sources;
@@ -29,9 +21,6 @@ namespace OB
 {
     public partial class App : PrismApplication
     {
-        // 將 Sparkle 暴露出來，方便在設置頁面手動觸發檢查
-        public static SparkleUpdater? SparkleInstance { get; private set; }
-
         protected override AvaloniaObject CreateShell() => null!;
 
         protected override void RegisterTypes(IContainerRegistry containerRegistry)
@@ -58,56 +47,74 @@ namespace OB
         {
             try
             {
-                // 1. 配置更新源 (指向你的 GitHub Repo)
-                var mgr = new UpdateManager(new GithubSource("https://github.com/cypwlp/OB", null, false));
+                // 使用 GitHub 作為更新源
+                // 注意：repoUrl 格式為 "https://github.com/你的用戶名/你的倉庫名" （不要加 .git）
+                var source = new GithubSource("https://github.com/cypwlp/OB", "", false);
+                var mgr = new UpdateManager(source);
 
-                // 2. 檢查是否有更新
-                var newVersion = await mgr.CheckForUpdatesAsync();
-                if (newVersion == null) return;
+                // 檢查是否有更新
+                var updateInfo = await mgr.CheckForUpdatesAsync();
 
-                // 3. 切換到 UI 線程彈出通知
-                Dispatcher.UIThread.Post(() =>
+                if (updateInfo == null)
+                {
+                    // 已是最新版，可記 log 或忽略
+                    return;
+                }
+
+                // 有更新 → 切到 UI 執行緒顯示對話框
+                await Dispatcher.UIThread.InvokeAsync(async () =>
                 {
                     var dialogService = Container.Resolve<IDialogService>();
-                    var parameters = new DialogParameters { { "UpdateInfo", newVersion } };
+                    var parameters = new DialogParameters
+            {
+                { "UpdateInfo", updateInfo }
+            };
 
-                    dialogService.ShowDialog("UpdateDialog", parameters, async result =>
+                    // 顯示你的自訂更新對話框
+                    var result = await dialogService.ShowDialogAsync("UpdateDialog", parameters);
+
+                    if (result?.Result == ButtonResult.OK)
                     {
-                        if (result.Result == ButtonResult.OK)
-                        {
-                            // 4. 下載更新 (增量更新會自動處理)
-                            await mgr.DownloadUpdatesAsync(newVersion);
+                        // 使用者同意更新 → 先下載 → 然後套用並重啟
+                        await mgr.DownloadUpdatesAsync(updateInfo);
 
-                            // 5. 套用更新並重啟
-                            mgr.ApplyUpdatesAndRestart(newVersion);
-                        }
-                    });
+                        // 套用更新並重啟應用（會自動關閉目前程式並啟動新版）
+                        mgr.ApplyUpdatesAndRestart(updateInfo);
+                    }
                 });
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[Velopack Error] {ex.Message}");
+                // 避免更新失敗導致程式崩潰，記錄到輸出視窗
+                System.Diagnostics.Debug.WriteLine($"Velopack 更新檢查失敗: {ex.Message}");
             }
         }
 
         private void StartWithLoginAsync(IClassicDesktopStyleApplicationLifetime desktopLifetime)
         {
-            // 創建一個透明的虛擬視窗作為初始主窗口
-            var splashWindow = new Window { Width = 1, Height = 1, SystemDecorations = SystemDecorations.None, ShowInTaskbar = false, Opacity = 0 };
+            var splashWindow = new Window
+            {
+                Width = 1,
+                Height = 1,
+                SystemDecorations = SystemDecorations.None,
+                ShowInTaskbar = false,
+                Opacity = 0
+            };
             splashWindow.Show();
             desktopLifetime.MainWindow = splashWindow;
 
             var dialogService = Container.Resolve<IDialogService>();
+
             dialogService.ShowDialog("Login", null, async result =>
             {
-                if (result.Result == ButtonResult.OK)
+                if (result?.Result == ButtonResult.OK)
                 {
                     if (result.Parameters.TryGetValue<RemoteDBTools>("dbtools", out var dbtools) &&
-                        result.Parameters.TryGetValue<LogUserInfo>("LogUser", out var LogUser))
+                        result.Parameters.TryGetValue<LogUserInfo>("LogUser", out var logUser))
                     {
                         var mainWin = Container.Resolve<MainWin>();
                         var vm = Container.Resolve<MainViewModel>();
-                        vm.LogUser = LogUser;
+                        vm.LogUser = logUser;
                         vm.RemoteDBTools = dbtools;
                         mainWin.DataContext = vm;
 
@@ -116,8 +123,12 @@ namespace OB
 
                         mainWin.Show();
                         desktopLifetime.MainWindow = mainWin;
+
                         await vm.DefaultNavigateAsync();
+
+                        // 登入成功後立即檢查更新（最推薦的位置）
                         _ = CheckForUpdatesAsync();
+
                         splashWindow.Close();
                     }
                     else
