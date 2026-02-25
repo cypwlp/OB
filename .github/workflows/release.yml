@@ -11,7 +11,6 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        # 包含三種作業系統
         include:
           - os: windows-latest
             rid: win-x64
@@ -40,7 +39,6 @@ jobs:
       - name: Install Velopack CLI
         run: dotnet tool install -g vpk
 
-      # Linux 環境需要額外安裝工具來打包 AppImage
       - name: Install Linux Dependencies
         if: runner.os == 'Linux'
         run: |
@@ -53,26 +51,51 @@ jobs:
 
       - name: Sync Previous Releases (Delta Updates)
         continue-on-error: true
-        # vpk download 會根據當前 OS 下載對應的歷史版本
         run: |
           vpk download github --repoUrl https://github.com/${{ github.repository }} --outputDir ./Releases
+
+      # macOS 需要將 PNG 圖標轉換為 .icns 格式
+      - name: Convert PNG to ICNS (macOS only)
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p AppIcon.iconset
+          # 產生多種尺寸圖標（可根據需要增減）
+          sips -z 16 16     Assets/app-icon.png --out AppIcon.iconset/icon_16x16.png
+          sips -z 32 32     Assets/app-icon.png --out AppIcon.iconset/icon_16x16@2x.png
+          sips -z 32 32     Assets/app-icon.png --out AppIcon.iconset/icon_32x32.png
+          sips -z 64 64     Assets/app-icon.png --out AppIcon.iconset/icon_32x32@2x.png
+          sips -z 128 128   Assets/app-icon.png --out AppIcon.iconset/icon_128x128.png
+          sips -z 256 256   Assets/app-icon.png --out AppIcon.iconset/icon_128x128@2x.png
+          sips -z 256 256   Assets/app-icon.png --out AppIcon.iconset/icon_256x256.png
+          sips -z 512 512   Assets/app-icon.png --out AppIcon.iconset/icon_256x256@2x.png
+          sips -z 512 512   Assets/app-icon.png --out AppIcon.iconset/icon_512x512.png
+          sips -z 1024 1024 Assets/app-icon.png --out AppIcon.iconset/icon_512x512@2x.png
+          # 轉換為 .icns
+          iconutil -c icns AppIcon.iconset -o Assets/app-icon.icns
 
       - name: Velopack Pack
         shell: bash
         run: |
+          # 去除 tag 名稱前的 'v' 前綴，獲得純版本號
+          VERSION="${GITHUB_REF_NAME#v}"
+
           # 基礎參數
           PACK_ARGS=(
             --packId "OB"
-            --packVersion "${{ github.ref_name }}"
+            --packVersion "$VERSION"
             --packDir "./publish"
             --mainExe "${{ matrix.executable }}"
             --outputDir "./Releases"
-            --icon "./Assets/app-icon.png"
           )
 
-          # macOS 額外需要的參數
+          # 根據作業系統設定圖標與 bundle ID
           if [ "${{ runner.os }}" == "macOS" ]; then
-            PACK_ARGS+=(--bundleId "com.yourcompany.ob")
+            # macOS 使用 .icns 圖標
+            PACK_ARGS+=(--icon "./Assets/app-icon.icns")
+            PACK_ARGS+=(--bundleId "com.yourcompany.ob")   # 請替換為您的實際 bundle ID
+          else
+            # Windows 與 Linux 使用 .png 圖標
+            PACK_ARGS+=(--icon "./Assets/app-icon.png")
           fi
 
           vpk pack "${PACK_ARGS[@]}"
@@ -80,10 +103,6 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          # 上傳所有生成的安裝包與更新數據
-          # Windows: .exe, .nupkg
-          # macOS: .pkg, .zip
-          # Linux: .AppImage
           files: |
             ./Releases/*.exe
             ./Releases/*.nupkg
