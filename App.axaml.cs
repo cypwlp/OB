@@ -32,6 +32,7 @@ namespace OB
             containerRegistry.RegisterForNavigation<Detect, DetectViewModel>();
             containerRegistry.RegisterForNavigation<Process, ProcessViewModel>();
             containerRegistry.RegisterDialog<UpdateDialog, UpdateViewModel>();
+            containerRegistry.RegisterDialog<About, AboutViewModel>();
         }
 
         public override void OnFrameworkInitializationCompleted()
