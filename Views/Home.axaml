@@ -14,7 +14,7 @@
         </StackPanel>
 
             <StackPanel Grid.Row="1">
-            <Button Content="上傳PDF" Margin="10"/>
+            <Button Content="上傳PDF9.0.2" Margin="10"/>
         </StackPanel>
 	</Grid>
 </UserControl>
