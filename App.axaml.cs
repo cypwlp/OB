@@ -38,7 +38,7 @@ namespace OB
         {
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktopLifetime)
             {
-                StartWithLoginAsync(desktopLifetime);
+                _ = StartWithLoginAsync(desktopLifetime);
             }
             base.OnFrameworkInitializationCompleted();
         }
@@ -90,7 +90,7 @@ namespace OB
             }
         }
 
-        private void StartWithLoginAsync(IClassicDesktopStyleApplicationLifetime desktopLifetime)
+        private async Task StartWithLoginAsync(IClassicDesktopStyleApplicationLifetime desktopLifetime)
         {
             var splashWindow = new Window
             {

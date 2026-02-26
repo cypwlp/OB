@@ -1,18 +1,22 @@
 ﻿using Material.Icons;
 using Prism.Mvvm;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Collections.ObjectModel;
 
 namespace OB.Models
 {
-    public class LeftMenuItem:BindableBase
+    public class LeftMenuItem : BindableBase
     {
         private MaterialIconKind _icon;
         private string? _title;
         private string? _viewName;
+
+        public ObservableCollection<LeftMenuItem> SubItems { get; set; } = new();
+
+        // 輔助屬性：判斷是否有子項
+        public bool HasSubItems => SubItems != null && SubItems.Count > 0;
+
+        // 輔助屬性：判斷是否為導航項（有 ViewName 才能跳轉）
+        public bool IsNavigationItem => !string.IsNullOrEmpty(ViewName);
 
         public MaterialIconKind Icon
         {

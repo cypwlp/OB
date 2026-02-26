@@ -24,12 +24,12 @@ xmlns:ia="using:Avalonia.Xaml.Interactions.Core"
             <!-- 左侧导航抽屉 -->
             <controls:NavigationDrawer LeftDrawerOpened="{Binding IsMenuExpanded, Mode=TwoWay}"
                                        Classes="permanent"
-                                       LeftDrawerWidth="170"
+                                       LeftDrawerWidth="190"
                                        >
                 <!-- 左侧抽屉内容：菜单 + 头部信息 -->
                 <controls:NavigationDrawer.LeftDrawerContent >
-                    <ScrollViewer Width="170">
-                        <StackPanel Width="170">
+                    <ScrollViewer Width="190">
+                        <StackPanel Width="190">
                             <!-- 应用信息区域（图标、名称） -->
                             <controls:ColorZone Mode="Accent" Height="120">
                                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -41,40 +41,32 @@ xmlns:ia="using:Avalonia.Xaml.Interactions.Core"
                                 </StackPanel>
                             </controls:ColorZone>
 
-                            <!-- 菜单列表 -->
-                            <ListBox ItemsSource="{Binding MenuItems}"
-                                     SelectedItem="{Binding SelectedMenuItem, Mode=TwoWay}"
-                                     Background="Transparent"
+                       <TreeView ItemsSource="{Binding MenuItems}"
+          SelectedItem="{Binding SelectedMenuItem, Mode=TwoWay}"
+          Background="Transparent"
+          BorderThickness="0">
+    <TreeView.Styles>
+        <!-- 移除 TreeView 默認的縮進和線條，使其看起來像菜單 -->
+        <Style Selector="TreeViewItem">
+            <Setter Property="IsExpanded" Value="True"/> <!-- 默認展開 -->
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="MinHeight" Value="48" />
+        </Style>
+    </TreeView.Styles>
 
-                                     Classes="NoScroll">
-								<i:Interaction.Behaviors>
-									<ia:EventTriggerBehavior EventName="SelectionChanged">
-										<ia:InvokeCommandAction Command="{Binding SelectMenuItemCommand}"
-																CommandParameter="{Binding SelectedMenuItem}" />
-									</ia:EventTriggerBehavior>
-								</i:Interaction.Behaviors>
-                                <ListBox.Styles>
-                                    <!-- 菜单项样式：高度48，垂直居中，内边距16 -->
-                                    <Style Selector="ListBoxItem">
-                                        <Setter Property="Height" Value="48" />
-                                        <Setter Property="Padding" Value="16,0" />
-                                        <Setter Property="VerticalContentAlignment" Value="Center" />
-                                    </Style>
-                                </ListBox.Styles>
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <StackPanel Orientation="Horizontal"
-                                                    HorizontalAlignment="Left"
-                                                    Spacing="16">
-							
-                                            <!-- 图标（使用 MaterialIcon） -->
-                                            <avalonia:MaterialIcon Kind="{Binding Icon}" />
-                                            <!-- 菜单标题 -->
-                                            <TextBlock Text="{Binding Title}" />
-                                        </StackPanel>
-                                    </DataTemplate> 
-                                </ListBox.ItemTemplate>
-                            </ListBox>
+    <TreeView.ItemTemplate>
+        <!-- 使用 HierarchicalDataTemplate 定義層級結構 -->
+        <TreeDataTemplate ItemsSource="{Binding SubItems}">
+            <StackPanel Orientation="Horizontal"
+                        Height="48"
+                        Spacing="16"
+                        Margin="16,0">
+                <avalonia:MaterialIcon Kind="{Binding Icon}" Width="24" Height="24" />
+                <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
+            </StackPanel>
+        </TreeDataTemplate>
+    </TreeView.ItemTemplate>
+</TreeView>
                         </StackPanel>
                     </ScrollViewer>
                 </controls:NavigationDrawer.LeftDrawerContent>

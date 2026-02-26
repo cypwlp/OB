@@ -129,13 +129,14 @@
 						<Button Grid.Row="4"
 								Grid.Column="0"
 								Command="{Binding LoginCommand}"
-								Content="登錄"
+								Content="登錄（Enter）"
 								FontSize="15"
 								FontWeight="SemiBold"
 								Foreground="White"
 								Background="#4F46E5"
 								BorderThickness="0"
 								CornerRadius="8"
+								HotKey="Enter"
 								Height="44"
 								Cursor="Hand">
 							<Button.Styles>
