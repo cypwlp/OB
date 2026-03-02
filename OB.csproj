@@ -51,6 +51,8 @@
 		<PackageReference Include="NetSparkleUpdater.UI.Avalonia" Version="3.0.3" />
 		<PackageReference Include="Prism.DryIoc.Avalonia" Version="9.0.537.11130" />
 		<PackageReference Include="ReactiveUI.Avalonia" Version="11.3.8" />
+		<PackageReference Include="Sdcb.PaddleOCR" Version="3.0.1" />
+		<PackageReference Include="Sdcb.PaddleOCR.Models.Online" Version="3.0.1" />
 		<PackageReference Include="SkiaSharp" Version="3.119.2" />
 		<PackageReference Include="System.ServiceModel.Primitives" Version="8.0.0" />
 		<PackageReference Include="System.ServiceModel.Http" Version="8.0.0" />

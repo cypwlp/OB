@@ -2,36 +2,49 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:OB.ViewModels"
              x:Class="OB.Settings"
-
              x:DataType="vm:SettingsViewModel">
     <DockPanel Margin="20">
-        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,15">
-            <TextBlock Text="模型標籤合格判定配置 (單位: mm / mm²)" FontSize="20" FontWeight="Bold"/>
-            <Button Grid.Column="1" Content="儲存設置" Command="{Binding SaveSettings}" Classes="Accent"/>
+        <!-- 顶部工具栏 -->
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,15">
+            <TextBlock Text="模型標籤合格判定配置 (單位: mm / mm²)" 
+                       FontSize="20" FontWeight="Bold"
+                       VerticalAlignment="Center"/>
+            <Button Grid.Column="1" Content="詳細設定" 
+                    Command="{Binding OpenDialogCommand}" 
+                    Margin="5,0" Padding="10,5"/>
+            <Button Grid.Column="2" Content="儲存設置" 
+                    Command="{Binding SaveSettings}" 
+                    Classes="Accent" Padding="10,5"/>
         </Grid>
 
-        <DataGrid ItemsSource="{Binding ClassSettings}" AutoGenerateColumns="False" GridLinesVisibility="All" BorderThickness="1" BorderBrush="Gray">
+        <!-- DataGrid 将自动填充剩余空间 -->
+        <DataGrid ItemsSource="{Binding ClassSettings}" 
+                  SelectedIndex="{Binding SelectedIndex}" 
+                  AutoGenerateColumns="False" 
+                  GridLinesVisibility="All" 
+                  BorderThickness="1" 
+                  BorderBrush="Gray">
             <DataGrid.Columns>
+                <!-- 固定宽度的列保持不变，但可考虑将部分列改为比例宽度 -->
                 <DataGridCheckBoxColumn Header="偵測" Binding="{Binding IsEnabled}" Width="50"/>
                 <DataGridTextColumn Header="類別" Binding="{Binding Label}" IsReadOnly="True" Width="120"/>
                 
+                <!-- 最低置信度模板列 -->
                 <DataGridTemplateColumn Header="最低置信度" Width="100">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
-                            <NumericUpDown Value="{Binding MinConfidence}" Minimum="0" Maximum="1" Increment="0.05" FormatString="P0"/>
+                            <NumericUpDown Value="{Binding MinConfidence}" 
+                                            Minimum="0" Maximum="1" 
+                                            Increment="0.05" FormatString="P0"/>
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
 
-                <!-- 面積敏感開關 -->
+                <!-- 其他列 -->
                 <DataGridCheckBoxColumn Header="PDF面積敏感" Binding="{Binding IsAreaSensitive}" Width="110"/>
-                
-                <!-- 面積閾值與分級標準 -->
                 <DataGridTextColumn Header="PDF面積閾值(mm²)" Binding="{Binding PdfAreaThreshold}" Width="130"/>
                 <DataGridTextColumn Header=">閾值要求(mm)" Binding="{Binding MinSizeIfLargePdf}" Width="120"/>
                 <DataGridTextColumn Header="≤閾值要求(mm)" Binding="{Binding MinSizeIfSmallPdf}" Width="120"/>
-                
-                <!-- 固定標準 -->
                 <DataGridTextColumn Header="固定要求(mm)" Binding="{Binding MinSizeFixed}" Width="120"/>
             </DataGrid.Columns>
         </DataGrid>
