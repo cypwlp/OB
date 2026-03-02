@@ -9,6 +9,7 @@
 		<!-- 【關鍵修改】：禁止在版本號後面生成 +hash 後綴，確保 NetSparkle 能正確對比版本 -->
 		<IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<ApplicationIcon>Assets\avalonia-logo.ico</ApplicationIcon>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -28,6 +29,7 @@
 	</ItemGroup>
 	<ItemGroup>
 		<AvaloniaResource Include="Assets\**" />
+		<Content Include="Assets\avalonia-logo.ico" />
 		<PackageReference Include="Avalonia" Version="11.3.11" />
 		<PackageReference Include="Avalonia.Desktop" Version="11.3.11" />
 		<PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.11" />
