@@ -15,10 +15,10 @@ jobs:
           - os: windows-latest
             rid: win-x64
             executable: OB.exe
-          - os: macos-13                # Intel (x64)
+          - os: macos-15-intel                 # Intel x64
             rid: osx-x64
             executable: OB
-          - os: macos-latest             # Apple Silicon (ARM64)
+          - os: macos-latest             # Apple Silicon ARM64
             rid: osx-arm64
             executable: OB
           - os: ubuntu-22.04
@@ -48,81 +48,73 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libfuse2 desktop-file-utils libglib2.0-bin
 
-      - name: Publish Application
+      # 平台專屬圖示轉換，並設定環境變數供後續步驟使用
+      - name: Prepare Icon and Platform Flags
+        id: prepare
+        shell: bash
         run: |
-          dotnet publish -c Release --runtime ${{ matrix.rid }} --self-contained true -o ./publish
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            choco install imagemagick -y
+            magick convert ./Assets/app-icon.png -define icon:auto-resize=256,128,64,48,32,16 ./Assets/app-icon.ico
+            echo "ICON=./Assets/app-icon.ico" >> $GITHUB_ENV
+            echo "BUNDLE_ID=" >> $GITHUB_ENV
+          elif [ "$RUNNER_OS" == "macOS" ]; then
+            mkdir -p AppIcon.iconset
+            sips -z 16 16     Assets/app-icon.png --out AppIcon.iconset/icon_16x16.png
+            sips -z 32 32     Assets/app-icon.png --out AppIcon.iconset/icon_16x16@2x.png
+            sips -z 32 32     Assets/app-icon.png --out AppIcon.iconset/icon_32x32.png
+            sips -z 64 64     Assets/app-icon.png --out AppIcon.iconset/icon_32x32@2x.png
+            sips -z 128 128   Assets/app-icon.png --out AppIcon.iconset/icon_128x128.png
+            sips -z 256 256   Assets/app-icon.png --out AppIcon.iconset/icon_128x128@2x.png
+            sips -z 256 256   Assets/app-icon.png --out AppIcon.iconset/icon_256x256.png
+            sips -z 512 512   Assets/app-icon.png --out AppIcon.iconset/icon_256x256@2x.png
+            sips -z 512 512   Assets/app-icon.png --out AppIcon.iconset/icon_512x512.png
+            sips -z 1024 1024 Assets/app-icon.png --out AppIcon.iconset/icon_512x512@2x.png
+            iconutil -c icns AppIcon.iconset -o Assets/app-icon.icns
+            echo "ICON=./Assets/app-icon.icns" >> $GITHUB_ENV
+            echo "BUNDLE_ID=--bundleId com.cypilu.ob" >> $GITHUB_ENV
+          else  # Linux
+            echo "ICON=./Assets/app-icon.png" >> $GITHUB_ENV
+            echo "BUNDLE_ID=" >> $GITHUB_ENV
+          fi
+
+      - name: Publish Application
+        run: dotnet publish -c Release --runtime ${{ matrix.rid }} --self-contained true -o ./publish
 
       - name: Sync Previous Releases (Delta Updates)
         continue-on-error: true
         run: |
           vpk download github --repoUrl https://github.com/${{ github.repository }} --outputDir ./Releases
 
-      # Windows 平台：將 PNG 轉換為 ICO
-      - name: Install ImageMagick (Windows)
-        if: runner.os == 'Windows'
-        run: choco install imagemagick -y
-
-      - name: Convert PNG to ICO (Windows only)
-        if: runner.os == 'Windows'
-        run: |
-          magick convert ./Assets/app-icon.png -define icon:auto-resize=256,128,64,48,32,16 ./Assets/app-icon.ico
-
-      # macOS 平台：將 PNG 轉換為 ICNS
-      - name: Convert PNG to ICNS (macOS only)
-        if: runner.os == 'macOS'
-        run: |
-          mkdir -p AppIcon.iconset
-          sips -z 16 16     Assets/app-icon.png --out AppIcon.iconset/icon_16x16.png
-          sips -z 32 32     Assets/app-icon.png --out AppIcon.iconset/icon_16x16@2x.png
-          sips -z 32 32     Assets/app-icon.png --out AppIcon.iconset/icon_32x32.png
-          sips -z 64 64     Assets/app-icon.png --out AppIcon.iconset/icon_32x32@2x.png
-          sips -z 128 128   Assets/app-icon.png --out AppIcon.iconset/icon_128x128.png
-          sips -z 256 256   Assets/app-icon.png --out AppIcon.iconset/icon_128x128@2x.png
-          sips -z 256 256   Assets/app-icon.png --out AppIcon.iconset/icon_256x256.png
-          sips -z 512 512   Assets/app-icon.png --out AppIcon.iconset/icon_256x256@2x.png
-          sips -z 512 512   Assets/app-icon.png --out AppIcon.iconset/icon_512x512.png
-          sips -z 1024 1024 Assets/app-icon.png --out AppIcon.iconset/icon_512x512@2x.png
-          iconutil -c icns AppIcon.iconset -o Assets/app-icon.icns
-
       - name: Velopack Pack
         shell: bash
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-
-          PACK_ARGS=(
-            --packId "OB"
-            --packVersion "$VERSION"
-            --packDir "./publish"
-            --mainExe "${{ matrix.executable }}"
+          vpk pack \
+            --packId "OB" \
+            --packVersion "$VERSION" \
+            --packDir "./publish" \
+            --mainExe "${{ matrix.executable }}" \
+            --icon "${{ env.ICON }}" \
+            ${{ env.BUNDLE_ID }} \
             --outputDir "./Releases"
-          )
 
-          if [ "${{ runner.os }}" == "macOS" ]; then
-            PACK_ARGS+=(--icon "./Assets/app-icon.icns")
-            PACK_ARGS+=(--bundleId "com.cypilu.ob")  
-          elif [ "${{ runner.os }}" == "Windows" ]; then
-            PACK_ARGS+=(--icon "./Assets/app-icon.ico")
-          else
-            # Linux
-            PACK_ARGS+=(--icon "./Assets/app-icon.png")
-          fi
-          vpk pack "${PACK_ARGS[@]}"
-          if [ "${{ runner.os }}" == "macOS" ]; then
-            cd ./Releases
-            for f in OB-*-osx-*; do
-              if [ -f "$f" ]; then
-                newname=$(echo "$f" | sed "s/-osx-/-${{ matrix.rid }}-/")
-                mv "$f" "$newname"
-              fi
-            done
-            if [ -f "RELEASES-osx" ]; then
-              mv RELEASES-osx "RELEASES-${{ matrix.rid }}"
+      # macOS 的 Velopack 預設使用 "osx" 作為架構標籤，這裡改為正確的 RID
+      - name: Rename macOS Artifacts
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          cd ./Releases
+          for f in OB-*-osx-*; do
+            if [ -f "$f" ]; then
+              newname=$(echo "$f" | sed "s/-osx-/-${{ matrix.rid }}-/")
+              mv "$f" "$newname"
             fi
-            if [ -f "releases.osx.json" ]; then
-              mv releases.osx.json "releases.${{ matrix.rid }}.json"
-            fi
-            cd ..
-          fi
+          done
+          [ -f "RELEASES-osx" ] && mv RELEASES-osx "RELEASES-${{ matrix.rid }}"
+          [ -f "releases.osx.json" ] && mv releases.osx.json "releases.${{ matrix.rid }}.json"
+          cd ..
+
       - name: List Release Directory
         run: ls -la ./Releases
         shell: bash
