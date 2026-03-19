@@ -9,12 +9,13 @@
             <RowDefinition Height="50"/>
             <RowDefinition Height="400"/>
         </Grid.RowDefinitions>
-        <StackPanel  Grid.Row="0">
+<!--        <StackPanel  Grid.Row="0">
             <Button Content="上傳PDF" Margin="10"/>
         </StackPanel>
 
             <StackPanel Grid.Row="1">
             <Button Content="上傳PDF9.0.2" Margin="10"/>
-        </StackPanel>
+        </StackPanel>-->
+        <TextBlock>這是v10.0.3版本，可以看到嗎？</TextBlock>
 	</Grid>
 </UserControl>
