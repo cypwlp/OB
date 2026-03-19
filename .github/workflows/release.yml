@@ -7,7 +7,7 @@ on:
 
 jobs:
   publish:
-    name: Publish for ${{ matrix.os }}
+    name: Publish for ${{ matrix.os }} (${{ matrix.rid }})
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -15,10 +15,10 @@ jobs:
           - os: windows-latest
             rid: win-x64
             executable: OB.exe
-          - os: macos-latest
+          - os: macos-13                # Intel (x64)
             rid: osx-x64
             executable: OB
-          - os: macos-latest   
+          - os: macos-latest             # Apple Silicon (ARM64)
             rid: osx-arm64
             executable: OB
           - os: ubuntu-22.04
@@ -87,10 +87,8 @@ jobs:
       - name: Velopack Pack
         shell: bash
         run: |
-          # 去除 tag 名稱前的 'v' 前綴，獲得純版本號
           VERSION="${GITHUB_REF_NAME#v}"
 
-          # 基礎參數
           PACK_ARGS=(
             --packId "OB"
             --packVersion "$VERSION"
@@ -99,20 +97,32 @@ jobs:
             --outputDir "./Releases"
           )
 
-          # 根據作業系統設定圖標與 bundle ID
           if [ "${{ runner.os }}" == "macOS" ]; then
             PACK_ARGS+=(--icon "./Assets/app-icon.icns")
-            PACK_ARGS+=(--bundleId "com.yourcompany.ob")   # ⚠️ 請替換為您的實際 bundle ID
+            PACK_ARGS+=(--bundleId "com.cypilu.ob")  
           elif [ "${{ runner.os }}" == "Windows" ]; then
             PACK_ARGS+=(--icon "./Assets/app-icon.ico")
           else
             # Linux
             PACK_ARGS+=(--icon "./Assets/app-icon.png")
           fi
-
           vpk pack "${PACK_ARGS[@]}"
-
-      # 【偵錯】列出 Releases 目錄內容，確認檔案產生（使用 bash shell 確保跨平台相容）
+          if [ "${{ runner.os }}" == "macOS" ]; then
+            cd ./Releases
+            for f in OB-*-osx-*; do
+              if [ -f "$f" ]; then
+                newname=$(echo "$f" | sed "s/-osx-/-${{ matrix.rid }}-/")
+                mv "$f" "$newname"
+              fi
+            done
+            if [ -f "RELEASES-osx" ]; then
+              mv RELEASES-osx "RELEASES-${{ matrix.rid }}"
+            fi
+            if [ -f "releases.osx.json" ]; then
+              mv releases.osx.json "releases.${{ matrix.rid }}.json"
+            fi
+            cd ..
+          fi
       - name: List Release Directory
         run: ls -la ./Releases
         shell: bash
@@ -127,7 +137,7 @@ jobs:
             ./Releases/*.zip
             ./Releases/*.AppImage
             ./Releases/RELEASES*
-            ./Releases/releases.*.json  
+            ./Releases/releases.*.json
           tag_name: ${{ github.ref_name }}
           generate_release_notes: true
         env:
