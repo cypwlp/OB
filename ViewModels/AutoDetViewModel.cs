@@ -24,13 +24,18 @@ namespace OB.ViewModels
         private readonly string UploadImagesPath = @"\\10.241.48.21\Users\OBAnotaion\images";
         private readonly string SaveAnnotationsPath = @"\\10.241.48.21\Users\OBAnotaion\labels";
 
-        // 多圖片列表
-        private ObservableCollection<string> _imagePaths = new();
-        public ObservableCollection<string> ImagePaths
+        // ──────────────────────────────────────────────────────────────
+        // 原本的多圖片列表 → 改名為 ExpectedImagePaths (預期圖片清單)
+        // ──────────────────────────────────────────────────────────────
+        private ObservableCollection<string> _expectedImagePaths = new ObservableCollection<string>();
+        public ObservableCollection<string> ExpectedImagePaths
         {
-            get => _imagePaths;
-            set => SetProperty(ref _imagePaths, value);
+            get => _expectedImagePaths;
+            set => SetProperty(ref _expectedImagePaths, value);
         }
+
+        // 新增：已經真正產生完成的圖片路徑集合
+        private readonly HashSet<string> _completedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         private int _currentImageIndex = -1;
         public int CurrentImageIndex
@@ -60,7 +65,22 @@ namespace OB.ViewModels
             set => SetProperty(ref _currentImagePath, value);
         }
 
-        private ObservableCollection<Annotation> _annotations = new();
+        // 新增：目前圖片載入狀態提示
+        private string _loadStatus = "就緒";
+        public string LoadStatus
+        {
+            get => _loadStatus;
+            set => SetProperty(ref _loadStatus, value);
+        }
+
+        private string _statusText = "就緒";
+        public string StatusText
+        {
+            get => _statusText;
+            set => SetProperty(ref _statusText, value);
+        }
+
+        private ObservableCollection<Annotation> _annotations = new ObservableCollection<Annotation>();
         public ObservableCollection<Annotation> Annotations
         {
             get => _annotations;
@@ -81,14 +101,6 @@ namespace OB.ViewModels
             set => SetProperty(ref _modeText, value);
         }
 
-        private string _statusText = "就緒";
-        public string StatusText
-        {
-            get => _statusText;
-            set => SetProperty(ref _statusText, value);
-        }
-
-        // 用來控制 ToggleButton 狀態
         private bool _isPolygonMode;
         public bool IsPolygonMode
         {
@@ -137,7 +149,7 @@ namespace OB.ViewModels
 
             NextImageCommand = new DelegateCommand(() =>
             {
-                if (CurrentImageIndex < ImagePaths.Count - 1) CurrentImageIndex++;
+                if (CurrentImageIndex < ExpectedImagePaths.Count - 1) CurrentImageIndex++;
             });
 
             SaveAnnotationsCommand = new DelegateCommand(async () => await OnSaveAnnotationsAsync());
@@ -147,7 +159,6 @@ namespace OB.ViewModels
         {
             _imageControl = image;
             _canvas = canvas;
-
             if (_imageControl != null)
             {
                 _imageControl.AttachedToVisualTree += (_, _) => UpdateImageInfo();
@@ -162,10 +173,8 @@ namespace OB.ViewModels
         private void UpdateImageInfo()
         {
             if (CurrentImage == null || _imageControl == null) return;
-
             _imageWidth = CurrentImage.Size.Width;
             _imageHeight = CurrentImage.Size.Height;
-
             Dispatcher.UIThread.Post(() =>
             {
                 if (_imageControl.Bounds.Width <= 0 || _imageControl.Bounds.Height <= 0) return;
@@ -196,9 +205,7 @@ namespace OB.ViewModels
         {
             if (_canvas == null) return;
             var point = e.GetPosition(_canvas);
-
             var currentPoint = e.GetCurrentPoint(_canvas);
-
             if (currentPoint.Properties.IsLeftButtonPressed)
             {
                 if (_currentDrawMode == DrawMode.Rectangle)
@@ -238,11 +245,9 @@ namespace OB.ViewModels
         public void OnPointerReleased(PointerReleasedEventArgs e)
         {
             if (_currentDrawMode != DrawMode.Rectangle || !_isDrawing || _canvas == null) return;
-
             _isDrawing = false;
             var rectEnd = e.GetPosition(_canvas);
             ClearPreviewRectangle();
-
             var ann = new Annotation
             {
                 Type = AnnotationType.BoundingBox,
@@ -258,7 +263,6 @@ namespace OB.ViewModels
         public void OnPointerPressedRight(PointerPressedEventArgs e)
         {
             if (_currentDrawMode != DrawMode.Polygon || _tempPolygon == null) return;
-
             if (e.GetCurrentPoint(_canvas).Properties.IsRightButtonPressed)
             {
                 if (_tempPolygon.Points.Count >= 3)
@@ -277,14 +281,146 @@ namespace OB.ViewModels
             }
         }
 
-        // ─── 繪圖輔助方法 ───（保持原樣，這裡省略以節省篇幅，你可以直接從你原本的程式碼貼上）
-        private void DrawPoint(Point p, bool isTemp) { /* ... 原內容 ... */ }
-        private void DrawLine(Point p1, Point p2, bool isTemp) { /* ... 原內容 ... */ }
-        private void RedrawTempPolygon() { /* ... 原內容 ... */ }
-        private void ClearTempShapes() { /* ... 原內容 ... */ }
-        private void DrawPreviewRectangle(Point start, Point current) { /* ... 原內容 ... */ }
-        private void ClearPreviewRectangle() { /* ... 原內容 ... */ }
-        private void DrawAnnotation(Annotation ann) { /* ... 原內容 ... */ }
+        // ─── 繪圖輔助方法 ───（你原本就有的，保留簽名）
+        private void DrawPoint(Point p, bool isTemp)
+        {
+            if (_canvas == null) return;
+            Dispatcher.UIThread.Post(() =>
+            {
+                var ellipse = new Avalonia.Controls.Shapes.Ellipse
+                {
+                    Width = 6,
+                    Height = 6,
+                    Fill = isTemp ? Avalonia.Media.Brushes.Red : Avalonia.Media.Brushes.LimeGreen,
+                    Tag = isTemp ? "temp" : null
+                };
+                Canvas.SetLeft(ellipse, p.X - 3);
+                Canvas.SetTop(ellipse, p.Y - 3);
+                _canvas.Children.Add(ellipse);
+            });
+        }
+        private void DrawLine(Point p1, Point p2, bool isTemp)
+        {
+            if (_canvas == null) return;
+            Dispatcher.UIThread.Post(() =>
+            {
+                var line = new Avalonia.Controls.Shapes.Line
+                {
+                    StartPoint = p1,
+                    EndPoint = p2,
+                    Stroke = isTemp ? Avalonia.Media.Brushes.Red : Avalonia.Media.Brushes.LimeGreen,
+                    StrokeThickness = 2,
+                    Tag = isTemp ? "temp" : null
+                };
+                _canvas.Children.Add(line);
+            });
+        }
+        private void RedrawTempPolygon()
+        {
+            ClearTempShapes();
+            if (_tempPolygon == null || _tempPolygon.Points.Count < 2) return;
+
+            for (int i = 0; i < _tempPolygon.Points.Count - 1; i++)
+                DrawLine(_tempPolygon.Points[i], _tempPolygon.Points[i + 1], true);
+
+            foreach (var p in _tempPolygon.Points)
+                DrawPoint(p, true);
+        }
+
+        private void ClearTempShapes()
+        {
+            if (_canvas == null) return;
+            Dispatcher.UIThread.Post(() =>
+            {
+                var toRemove = _canvas.Children
+                    .Where(c => c.Tag is string tag && tag == "temp")
+                    .ToList();
+
+                foreach (var child in toRemove)
+                    _canvas.Children.Remove(child);
+            });
+        }
+
+        private void DrawPreviewRectangle(Point start, Point current)
+        {
+            if (_canvas == null) return;
+            Dispatcher.UIThread.Post(() =>
+            {
+                ClearPreviewRectangle();
+
+                var rect = new Avalonia.Controls.Shapes.Rectangle
+                {
+                    Stroke = Avalonia.Media.Brushes.Red,
+                    StrokeThickness = 2,
+                    StrokeDashArray = new Avalonia.Collections.AvaloniaList<double> { 4, 2 },
+                    Tag = "preview"
+                };
+
+                double left = Math.Min(start.X, current.X);
+                double top = Math.Min(start.Y, current.Y);
+                double width = Math.Abs(current.X - start.X);
+                double height = Math.Abs(current.Y - start.Y);
+
+                Canvas.SetLeft(rect, left);
+                Canvas.SetTop(rect, top);
+                rect.Width = width;
+                rect.Height = height;
+
+                _canvas.Children.Add(rect);
+            });
+        }
+
+        private void ClearPreviewRectangle()
+        {
+            if (_canvas == null) return;
+            Dispatcher.UIThread.Post(() =>
+            {
+                var preview = _canvas.Children.FirstOrDefault(c => c.Tag is string tag && tag == "preview");
+                if (preview != null)
+                    _canvas.Children.Remove(preview);
+            });
+        }
+
+        private void DrawAnnotation(Annotation ann)
+        {
+            if (_canvas == null) return;
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (ann.Type == AnnotationType.BoundingBox && ann.Points.Count >= 2)
+                {
+                    var p1 = ann.Points[0];
+                    var p2 = ann.Points[1];
+                    double left = Math.Min(p1.X, p2.X);
+                    double top = Math.Min(p1.Y, p2.Y);
+                    double width = Math.Abs(p2.X - p1.X);
+                    double height = Math.Abs(p2.Y - p1.Y);
+
+                    var rect = new Avalonia.Controls.Shapes.Rectangle
+                    {
+                        Stroke = Avalonia.Media.Brushes.LimeGreen,
+                        StrokeThickness = 2,
+                        Tag = ann
+                    };
+
+                    Canvas.SetLeft(rect, left);
+                    Canvas.SetTop(rect, top);
+                    rect.Width = width;
+                    rect.Height = height;
+
+                    _canvas.Children.Add(rect);
+                }
+                else if (ann.Type == AnnotationType.Polygon && ann.Points.Count >= 3)
+                {
+                    for (int i = 0; i < ann.Points.Count - 1; i++)
+                        DrawLine(ann.Points[i], ann.Points[i + 1], false);
+
+                    DrawLine(ann.Points[^1], ann.Points[0], false);
+
+                    foreach (var p in ann.Points)
+                        DrawPoint(p, false);
+                }
+            });
+        }
 
         // ─── PDF 轉圖核心 ───
         public async Task ProcessPdfFolderAsync(string folderPath)
@@ -293,108 +429,158 @@ namespace OB.ViewModels
             {
                 var allFiles = Directory.GetFiles(folderPath);
                 var pdfFiles = allFiles.Where(f => Path.GetExtension(f).Equals(".pdf", StringComparison.OrdinalIgnoreCase)).ToList();
-
                 if (pdfFiles.Count == 0)
                 {
                     StatusText = "資料夾內沒有找到 PDF 檔案";
                     return;
                 }
 
-                StatusText = $"正在處理 {pdfFiles.Count} 個 PDF ...";
+                // 清空舊資料
+                ExpectedImagePaths.Clear();
+                _completedPaths.Clear();
+                Annotations.Clear();
+                CurrentImage = null;
+                CurrentImagePath = string.Empty;
+                CurrentImageIndex = -1;
+                LoadStatus = "準備轉換...";
+                StatusText = "正在產生預期頁面清單...";
 
-                var generated = new List<string>();
+                var tempExpected = new List<string>();
 
+                // 先只讀頁數，產生所有預期路徑
                 foreach (var pdf in pdfFiles)
                 {
-                    var jpgs = await ConvertPdfToJpgs300DpiAsync(pdf);
-                    generated.AddRange(jpgs);
+                    byte[] pdfBytes = await File.ReadAllBytesAsync(pdf);
+                    using var docLib = DocLib.Instance;
+                    using var docReader = docLib.GetDocReader(pdfBytes, new PageDimensions(1.0));
+                    var pdfName = Path.GetFileNameWithoutExtension(pdf);
+
+                    for (int i = 0; i < docReader.GetPageCount(); i++)
+                    {
+                        string expectedPath = Path.Combine(UploadImagesPath, $"{pdfName}_p{i + 1:D3}.jpg");
+                        tempExpected.Add(expectedPath);
+                    }
                 }
 
-                ImagePaths = new ObservableCollection<string>(generated.OrderBy(x => x));
-                if (ImagePaths.Count > 0)
+                await Dispatcher.UIThread.InvokeAsync(() =>
                 {
-                    CurrentImageIndex = 0;
-                    StatusText = $"處理完成，共產生 {ImagePaths.Count} 張圖片";
-                }
+                    foreach (var p in tempExpected)
+                    {
+                        ExpectedImagePaths.Add(p);
+                    }
+                    StatusText = $"預計產生 {ExpectedImagePaths.Count} 張圖片，開始轉換...";
+                    LoadStatus = "轉換中...";
+                });
+
+                // 真正開始轉換（背景執行）
+                _ = Task.Run(async () =>
+                {
+                    int processed = 0;
+
+                    foreach (var pdf in pdfFiles)
+                    {
+                        var pdfName = Path.GetFileNameWithoutExtension(pdf);
+                        const double dpi = 300.0;
+                        const double scale = dpi / 72.0;
+
+                        byte[] pdfBytes = await File.ReadAllBytesAsync(pdf);
+
+                        using var docLib = DocLib.Instance;
+                        using var docReader = docLib.GetDocReader(pdfBytes, new PageDimensions(scale));
+
+                        for (int i = 0; i < docReader.GetPageCount(); i++)
+                        {
+                            using var pageReader = docReader.GetPageReader(i);
+                            int w = pageReader.GetPageWidth();
+                            int h = pageReader.GetPageHeight();
+                            byte[] raw = pageReader.GetImage(); // BGRA raw bytes
+
+                            var info = new SKImageInfo(w, h, SKColorType.Bgra8888, SKAlphaType.Premul);
+                            using var bitmap = new SKBitmap();
+
+                            var handle = GCHandle.Alloc(raw, GCHandleType.Pinned);
+                            try
+                            {
+                                bool success = bitmap.InstallPixels(info, handle.AddrOfPinnedObject(), info.RowBytes);
+                                if (!success) continue;
+
+                                using var skImage = SKImage.FromBitmap(bitmap);
+                                using var encoded = skImage.Encode(SKEncodedImageFormat.Jpeg, 92);
+                                if (encoded == null) continue;
+
+                                string outPath = Path.Combine(UploadImagesPath, $"{pdfName}_p{i + 1:D3}.jpg");
+                                Directory.CreateDirectory(UploadImagesPath);
+                                await File.WriteAllBytesAsync(outPath, encoded.ToArray());
+
+                                // 通知完成
+                                string completed = outPath;
+                                Dispatcher.UIThread.Post(() =>
+                                {
+                                    _completedPaths.Add(completed);
+                                    processed++;
+                                    StatusText = $"已完成 {processed}/{ExpectedImagePaths.Count} 頁";
+
+                                    // 如果使用者目前正在看這一頁 → 立即載入
+                                    if (CurrentImageIndex >= 0 &&
+                                        CurrentImageIndex < ExpectedImagePaths.Count &&
+                                        string.Equals(ExpectedImagePaths[CurrentImageIndex], completed, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        LoadCurrentImage();
+                                    }
+                                });
+                            }
+                            finally
+                            {
+                                handle.Free();
+                            }
+                        }
+                    }
+
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        StatusText = $"轉換全部完成，共 {processed} 張圖片";
+                        LoadStatus = "全部就緒";
+                    });
+                });
             }
             catch (Exception ex)
             {
-                StatusText = $"處理失敗：{ex.Message}";
-            }
-        }
-
-        private async Task<List<string>> ConvertPdfToJpgs300DpiAsync(string pdfPath)
-        {
-            var pdfName = Path.GetFileNameWithoutExtension(pdfPath);
-            var generated = new List<string>();
-
-            byte[] pdfBytes = await File.ReadAllBytesAsync(pdfPath);
-            const double dpi = 300.0;
-            const double scale = dpi / 72.0;
-
-            using var docLib = DocLib.Instance;
-            using var docReader = docLib.GetDocReader(pdfBytes, new PageDimensions(scale));
-
-            for (int i = 0; i < docReader.GetPageCount(); i++)
-            {
-                using var pageReader = docReader.GetPageReader(i);
-                int w = pageReader.GetPageWidth();
-                int h = pageReader.GetPageHeight();
-
-                byte[] raw = pageReader.GetImage(); // BGRA raw bytes
-
-                var info = new SKImageInfo(w, h, SKColorType.Bgra8888, SKAlphaType.Premul);
-
-                using var bitmap = new SKBitmap();
-
-                var handle = GCHandle.Alloc(raw, GCHandleType.Pinned);
-                try
+                await Dispatcher.UIThread.InvokeAsync(() =>
                 {
-                    // 關鍵：使用 IntPtr + rowBytes
-                    bool success = bitmap.InstallPixels(info, handle.AddrOfPinnedObject(), info.RowBytes);
-
-                    if (!success)
-                    {
-                        // 安裝失敗，跳過或記錄錯誤
-                        continue;
-                    }
-
-                    using var skImage = SKImage.FromBitmap(bitmap);
-                    using var encoded = skImage.Encode(SKEncodedImageFormat.Jpeg, 92);
-
-                    if (encoded == null) continue;
-
-                    string outPath = Path.Combine(UploadImagesPath, $"{pdfName}_p{i + 1:D3}.jpg");
-                    Directory.CreateDirectory(UploadImagesPath);
-
-                    await File.WriteAllBytesAsync(outPath, encoded.ToArray());
-                    generated.Add(outPath);
-                }
-                finally
-                {
-                    handle.Free();  // 務必釋放 pinned 記憶體
-                }
+                    StatusText = $"處理失敗：{ex.Message}";
+                    LoadStatus = "錯誤";
+                });
             }
-
-            return generated;
         }
 
         private void LoadCurrentImage()
         {
-            if (CurrentImageIndex < 0 || CurrentImageIndex >= ImagePaths.Count) return;
+            if (CurrentImageIndex < 0 || CurrentImageIndex >= ExpectedImagePaths.Count) return;
 
-            CurrentImagePath = ImagePaths[CurrentImageIndex];
+            CurrentImagePath = ExpectedImagePaths[CurrentImageIndex];
+
+            if (!_completedPaths.Contains(CurrentImagePath))
+            {
+                CurrentImage = null;
+                Annotations.Clear();
+                if (_canvas != null) _canvas.Children.Clear();
+                LoadStatus = "此頁還在轉換中，請稍候...";
+                StatusText = $"頁面 {CurrentImageIndex + 1}/{ExpectedImagePaths.Count} 載入中...";
+                return;
+            }
 
             try
             {
                 CurrentImage = new Bitmap(CurrentImagePath);
                 Annotations.Clear();
                 if (_canvas != null) _canvas.Children.Clear();
-                StatusText = $"目前：{Path.GetFileName(CurrentImagePath)}  ({CurrentImageIndex + 1}/{ImagePaths.Count})";
+                LoadStatus = "圖片已載入";
+                StatusText = $"目前：{Path.GetFileName(CurrentImagePath)} ({CurrentImageIndex + 1}/{ExpectedImagePaths.Count})";
                 UpdateImageInfo();
             }
             catch (Exception ex)
             {
+                LoadStatus = "載入失敗";
                 StatusText = $"載入失敗：{ex.Message}";
             }
         }
@@ -413,13 +599,12 @@ namespace OB.ViewModels
             try
             {
                 Directory.CreateDirectory(SaveAnnotationsPath);
-
                 using var sw = new StreamWriter(txtPath);
                 foreach (var ann in Annotations)
                 {
                     if (ann.Type == AnnotationType.BoundingBox && ann.Points.Count >= 2)
                     {
-                        var box = ann.GetBoundingBox();  // 請確保 Annotation 有此方法
+                        var box = ann.GetBoundingBox(); // 請確保 Annotation 有此方法
                         double xc = (box.X + box.Width / 2) / _canvasScale / _imageWidth;
                         double yc = (box.Y + box.Height / 2) / _canvasScale / _imageHeight;
                         double w = box.Width / _canvasScale / _imageWidth;
@@ -438,7 +623,6 @@ namespace OB.ViewModels
                         sw.WriteLine();
                     }
                 }
-
                 StatusText = $"已儲存標註：{Path.GetFileName(txtPath)}";
             }
             catch (Exception ex)
