@@ -49,6 +49,7 @@
 		<PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.24.2" />
 		<PackageReference Include="NetSparkleUpdater.SparkleUpdater" Version="3.0.3" />
 		<PackageReference Include="NetSparkleUpdater.UI.Avalonia" Version="3.0.3" />
+		<PackageReference Include="PanAndZoom" Version="11.3.9.1" />
 		<PackageReference Include="Prism.DryIoc.Avalonia" Version="9.0.537.11130" />
 		<PackageReference Include="ReactiveUI.Avalonia" Version="11.3.8" />
 		<PackageReference Include="Sdcb.PaddleOCR" Version="3.0.1" />
@@ -89,4 +90,4 @@
 	<ItemGroup>
 	  <Folder Include="OnnxModel\" />
 	</ItemGroup>
-</Project>
+</Project>  
