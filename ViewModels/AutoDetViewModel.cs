@@ -1,14 +1,13 @@
 ﻿using Avalonia;
+using Avalonia.Collections;
 using Avalonia.Controls;
 using Avalonia.Controls.PanAndZoom;
-using Avalonia.Input;
+using Avalonia.Controls.Shapes;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using Docnet.Core;
 using Docnet.Core.Models;
-using Microsoft.Extensions.Configuration;
-using OB.Models;
 using Prism.Commands;
 using Prism.Mvvm;
 using SkiaSharp;
@@ -17,49 +16,65 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
+using System.Text.Json;
 using System.Threading.Tasks;
+using Path = System.IO.Path;
 
 namespace OB.ViewModels
 {
     public class AutoDetViewModel : BindableBase
     {
-        private string _uploadImagesPath = string.Empty;
-        private string _saveAnnotationsPath = string.Empty;
+        #region 字段
+        private readonly string imagesPath = @"\\10.241.48.21\Users\OBAnotaion\images";
+        private readonly string labelsPath = @"\\10.241.48.21\Users\OBAnotaion\labels";
+        public bool NotIsPolygonMode => !IsPolygonMode;
 
-        private List<ClassInfo> _classes = new List<ClassInfo>();
-        public List<ClassInfo> Classes => _classes;
-        private ClassInfo _selectedClass;
-        public ClassInfo SelectedClass
+        // 內部繪圖變數
+        private Point _startPoint;
+        private bool _isDragging;
+        private Point _currentRectEnd;
+        private List<Point> _currentPolygonPoints = new();
+        private Point? _tempMovePoint;
+
+        private Image? _image;
+        private Canvas? _canvas;
+        #endregion
+
+        #region 屬性
+        private bool _isPolygonMode;
+        public bool IsPolygonMode
         {
-            get => _selectedClass;
-            set => SetProperty(ref _selectedClass, value);
+            get => _isPolygonMode;
+            set
+            {
+                if (SetProperty(ref _isPolygonMode, value))
+                    RaisePropertyChanged(nameof(NotIsPolygonMode));
+            }
         }
+
+        private int _currentImageIndex;
+        public int CurrentImageIndex
+        {
+            get => _currentImageIndex;
+            set => SetProperty(ref _currentImageIndex, value);
+        }
+
+        public ObservableCollection<string> ExpectedImagePaths { get; } = new();
+
+        private double _zoomLevel = 1.0;
+        public double ZoomLevel
+        {
+            get => _zoomLevel;
+            set => SetProperty(ref _zoomLevel, value);
+        }
+
+        public string ModeText => IsPolygonMode ? "多邊形模式" : "矩形模式";
 
         private int _polygonPointCount;
         public int PolygonPointCount
         {
             get => _polygonPointCount;
             set => SetProperty(ref _polygonPointCount, value);
-        }
-
-        private ObservableCollection<string> _expectedImagePaths = new ObservableCollection<string>();
-        public ObservableCollection<string> ExpectedImagePaths
-        {
-            get => _expectedImagePaths;
-            set => SetProperty(ref _expectedImagePaths, value);
-        }
-
-        private readonly HashSet<string> _completedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        private int _currentImageIndex = -1;
-        public int CurrentImageIndex
-        {
-            get => _currentImageIndex;
-            set
-            {
-                SetProperty(ref _currentImageIndex, value);
-                if (value >= 0) LoadCurrentImage();
-            }
         }
 
         private Bitmap? _currentImage;
@@ -69,618 +84,479 @@ namespace OB.ViewModels
             set => SetProperty(ref _currentImage, value);
         }
 
-        private string _currentImagePath = string.Empty;
-        public string CurrentImagePath
+        public ObservableCollection<Annotation> Annotations { get; } = new();
+
+        private Annotation? _selectedAnnotation;
+        public Annotation? SelectedAnnotation
         {
-            get => _currentImagePath;
-            set => SetProperty(ref _currentImagePath, value);
+            get => _selectedAnnotation;
+            set => SetProperty(ref _selectedAnnotation, value);
         }
 
-        private string _statusText = "就緒";
+        private string _statusText = "準備就緒";
         public string StatusText
         {
             get => _statusText;
             set => SetProperty(ref _statusText, value);
         }
 
-        private ObservableCollection<Annotation> _annotations = new ObservableCollection<Annotation>();
-        public ObservableCollection<Annotation> Annotations
-        {
-            get => _annotations;
-            set => SetProperty(ref _annotations, value);
-        }
+        public ObservableCollection<ClassItem> Classes { get; } = new();
 
-        private Annotation? _selectedAnnotation;
-        public Annotation? SelectedAnnotation
+        private ClassItem? _selectedClass;
+        public ClassItem? SelectedClass
         {
-            get => _selectedAnnotation;
-            set
-            {
-                if (SetProperty(ref _selectedAnnotation, value))
-                    RedrawAllAnnotations();
-            }
+            get => _selectedClass;
+            set => SetProperty(ref _selectedClass, value);
         }
+        #endregion
 
-        private string _modeText = "模式：矩形";
-        public string ModeText
-        {
-            get => _modeText;
-            set => SetProperty(ref _modeText, value);
-        }
-
-        private bool _isPolygonMode;
-        public bool IsPolygonMode
-        {
-            get => _isPolygonMode;
-            set
-            {
-                if (SetProperty(ref _isPolygonMode, value))
-                {
-                    SetDrawMode(value ? DrawMode.Polygon : DrawMode.Rectangle);
-                    if (!value) CancelPolygonDrawing();
-                }
-            }
-        }
-
-        private double _zoomLevel = 1.0;
-        public double ZoomLevel
-        {
-            get => _zoomLevel;
-            set => SetProperty(ref _zoomLevel, value);
-        }
-
+        #region Commands
         public DelegateCommand SetRectModeCommand { get; }
         public DelegateCommand SetPolygonModeCommand { get; }
-        public DelegateCommand PrevImageCommand { get; }
-        public DelegateCommand NextImageCommand { get; }
-        public DelegateCommand SaveAnnotationsCommand { get; }
+        public AsyncDelegateCommand SaveAnnotationsCommand { get; }
         public DelegateCommand ResetZoomCommand { get; }
-        public DelegateCommand<Annotation> DeleteAnnotationCommand { get; }
         public DelegateCommand CancelPolygonCommand { get; }
+        public AsyncDelegateCommand PrevImageCommand { get; }
+        public AsyncDelegateCommand NextImageCommand { get; }
+        public DelegateCommand<Annotation> DeleteAnnotationCommand { get; }
+        #endregion
 
-        private enum DrawMode { None, Rectangle, Polygon }
-        private DrawMode _currentDrawMode = DrawMode.Rectangle;
-        private Annotation? _tempPolygon;
-        private Point _rectStart;
-        private bool _isDrawing;
-
-        private Image? _imageControl;
-        private Canvas? _canvas;
-        private ZoomBorder? _zoomBorder;
-
-        private double _imageWidth;
-        private double _imageHeight;
+        // 事件：請求重置縮放（由 View 處理）
+        public event Action? RequestResetZoom;
 
         public AutoDetViewModel()
         {
-            LoadConfiguration();
-            InitializeClasses();
             SetRectModeCommand = new DelegateCommand(() => IsPolygonMode = false);
             SetPolygonModeCommand = new DelegateCommand(() => IsPolygonMode = true);
-            PrevImageCommand = new DelegateCommand(() => { if (CurrentImageIndex > 0) CurrentImageIndex--; });
-            NextImageCommand = new DelegateCommand(() => { if (CurrentImageIndex < ExpectedImagePaths.Count - 1) CurrentImageIndex++; });
-            SaveAnnotationsCommand = new DelegateCommand(async () => await OnSaveAnnotationsAsync());
-            ResetZoomCommand = new DelegateCommand(ResetZoom);
-            DeleteAnnotationCommand = new DelegateCommand<Annotation>(DeleteAnnotation);
-            CancelPolygonCommand = new DelegateCommand(CancelPolygonDrawing);
+            SaveAnnotationsCommand = new AsyncDelegateCommand(SaveAnnotationsForCurrentImageAsync);
+            ResetZoomCommand = new DelegateCommand(() => RequestResetZoom?.Invoke());
+            CancelPolygonCommand = new DelegateCommand(() =>
+            {
+                _currentPolygonPoints.Clear();
+                PolygonPointCount = 0;
+                _tempMovePoint = null;
+                RedrawAllAnnotations();
+            });
+            PrevImageCommand = new AsyncDelegateCommand(async () =>
+            {
+                if (CurrentImageIndex > 0)
+                    await LoadImageAsync(CurrentImageIndex - 1);
+            });
+            NextImageCommand = new AsyncDelegateCommand(async () =>
+            {
+                if (CurrentImageIndex < ExpectedImagePaths.Count - 1)
+                    await LoadImageAsync(CurrentImageIndex + 1);
+            });
+            DeleteAnnotationCommand = new DelegateCommand<Annotation>(ann =>
+            {
+                if (ann != null && Annotations.Contains(ann))
+                {
+                    Annotations.Remove(ann);
+                    RedrawAllAnnotations();
+                }
+            });
+
+            Classes.Add(new ClassItem { Name = "車牌" });
+            Classes.Add(new ClassItem { Name = "車身" });
+            Classes.Add(new ClassItem { Name = "輪胎" });
+            SelectedClass = Classes.FirstOrDefault();
         }
 
-        private void LoadConfiguration()
-        { /* 你的原本程式碼不變 */
-            try
-            {
-                var config = new ConfigurationBuilder()
-                    .SetBasePath(AppContext.BaseDirectory)
-                    .AddJsonFile("appsettings.json", optional: true, reloadOnChange: false)
-                    .Build();
-                _uploadImagesPath = config["ImageFolder"] ?? @"\\10.241.48.21\Users\OBAnotaion\images";
-                _saveAnnotationsPath = config["LabelFolder"] ?? @"\\10.241.48.21\Users\OBAnotaion\labels";
-                Directory.CreateDirectory(_uploadImagesPath);
-                Directory.CreateDirectory(_saveAnnotationsPath);
-            }
-            catch
-            {
-                _uploadImagesPath = @"\\10.241.48.21\Users\OBAnotaion\images";
-                _saveAnnotationsPath = @"\\10.241.48.21\Users\OBAnotaion\labels";
-            }
-        }
-
-        private void InitializeClasses()
+        // 保留該方法以相容，但不再需要 ZoomBorder
+        public void SetZoomBorder(ZoomBorder? zoomBorder)
         {
-            _classes = new List<ClassInfo>
-            {
-                new ClassInfo { Id = 0, Name = "待分類" },
-                new ClassInfo { Id = 1, Name = "目標A" },
-                new ClassInfo { Id = 2, Name = "目標B" },
-            };
-            _selectedClass = _classes[0];
+            // 不再使用 ZoomBorder，此方法保留為空實現
         }
 
         public void SetControls(Image image, Canvas canvas)
         {
-            _imageControl = image;
+            _image = image;
             _canvas = canvas;
-            if (_imageControl != null)
-            {
-                _imageControl.AttachedToVisualTree += (_, _) => UpdateImageInfo();
-                _imageControl.PropertyChanged += (_, e) =>
-                {
-                    if (e.Property == Image.SourceProperty) UpdateImageInfo();
-                };
-            }
         }
 
-        public void SetZoomBorder(ZoomBorder zoomBorder)
-        {
-            _zoomBorder = zoomBorder;
-            if (_zoomBorder != null)
-            {
-                _zoomBorder.MatrixChanged += (s, e) => ZoomLevel = _zoomBorder.Matrix.M11;
-            }
-        }
-
-        private void ResetZoom()
-        {
-            _zoomBorder?.ResetMatrix();
-            _zoomBorder?.Uniform();
-        }
-
-        private void UpdateImageInfo()
-        {
-            if (CurrentImage == null || _zoomBorder == null) return;
-            _imageWidth = CurrentImage.Size.Width;
-            _imageHeight = CurrentImage.Size.Height;
-            _zoomBorder.LayoutUpdated -= OnFitAfterLayout;
-            _zoomBorder.LayoutUpdated += OnFitAfterLayout;
-        }
-
-        private void OnFitAfterLayout(object? sender, EventArgs e)
-        {
-            if (_zoomBorder == null) return;
-            _zoomBorder.LayoutUpdated -= OnFitAfterLayout;
-            FitImageToView();
-        }
-
-        private void FitImageToView()
-        {
-            if (_zoomBorder == null) return;
-            _zoomBorder.Uniform();
-        }
-
-        // 座標轉換（不變）
-        private Point ToImageCoordinates(Point canvasPoint)
-        {
-            if (_zoomBorder == null) return canvasPoint;
-            var matrix = _zoomBorder.Matrix;
-            if (!matrix.HasInverse) return canvasPoint;
-            var inverse = matrix.Invert();
-            return inverse.Transform(canvasPoint);
-        }
-
-        private Point ToCanvasCoordinates(Point imagePoint)
-        {
-            if (_zoomBorder == null) return imagePoint;
-            return _zoomBorder.Matrix.Transform(imagePoint);
-        }
-
-        private void SetDrawMode(DrawMode mode)
-        {
-            _currentDrawMode = mode;
-            ModeText = mode == DrawMode.Rectangle ? "模式：矩形" : "模式：多邊形";
-            CancelPolygonDrawing();
-        }
-
-        private void CancelPolygonDrawing()
-        {
-            if (_tempPolygon != null)
-            {
-                ClearTempShapes();
-                _tempPolygon = null;
-                PolygonPointCount = 0;
-                StatusText = "已取消多邊形繪製";
-            }
-        }
-
-        // 下面所有 OnPointerPressed / Moved / Released / Right、AddAnnotation、Delete、Redraw、DrawAnnotation、DrawPoint、DrawLine、RedrawTempPolygon、ClearTempShapes、DrawPreviewRectangle、ClearPreviewRectangle 全部保持你原本的程式碼（我已完整包含）
-
-        public void OnPointerPressed(PointerPressedEventArgs e)
-        { /* 你原本程式碼 */
-            if (_canvas == null) return;
-            var position = e.GetPosition(_canvas);
-            var imagePos = ToImageCoordinates(position);
-            var currentPoint = e.GetCurrentPoint(_canvas);
-            if (currentPoint.Properties.IsLeftButtonPressed)
-            {
-                if (_currentDrawMode == DrawMode.Rectangle)
-                {
-                    _rectStart = imagePos;
-                    _isDrawing = true;
-                }
-                else if (_currentDrawMode == DrawMode.Polygon)
-                {
-                    if (_tempPolygon == null)
-                    {
-                        _tempPolygon = new Annotation
-                        {
-                            Type = AnnotationType.Polygon,
-                            ClassId = SelectedClass.Id,
-                            ClassName = SelectedClass.Name,
-                            Points = new List<Point> { imagePos }
-                        };
-                        DrawPoint(imagePos, true);
-                        PolygonPointCount = 1;
-                        StatusText = "多邊形繪製中，左鍵加點，右鍵閉合";
-                    }
-                    else
-                    {
-                        _tempPolygon.Points.Add(imagePos);
-                        RedrawTempPolygon();
-                        PolygonPointCount = _tempPolygon.Points.Count;
-                    }
-                }
-            }
-        }
-
-        public void OnPointerMoved(PointerEventArgs e)
-        { /* 你原本程式碼 */
-            if (_currentDrawMode != DrawMode.Rectangle || !_isDrawing || _canvas == null) return;
-            var current = ToImageCoordinates(e.GetPosition(_canvas));
-            DrawPreviewRectangle(_rectStart, current);
-        }
-
-        public void OnPointerReleased(PointerReleasedEventArgs e)
-        { /* 你原本程式碼 */
-            if (_currentDrawMode != DrawMode.Rectangle || !_isDrawing || _canvas == null) return;
-            _isDrawing = false;
-            var rectEnd = ToImageCoordinates(e.GetPosition(_canvas));
-            ClearPreviewRectangle();
-            var ann = new Annotation
-            {
-                Type = AnnotationType.BoundingBox,
-                ClassId = SelectedClass.Id,
-                ClassName = SelectedClass.Name,
-                Points = new List<Point> { _rectStart, rectEnd }
-            };
-            AddAnnotation(ann);
-            StatusText = $"已新增矩形，共 {Annotations.Count} 個標註";
-        }
-
-        public void OnPointerPressedRight(PointerPressedEventArgs e)
-        { /* 你原本程式碼 */
-            if (_currentDrawMode != DrawMode.Polygon || _tempPolygon == null) return;
-            var point = e.GetCurrentPoint(_canvas);
-            if (point.Properties.IsRightButtonPressed)
-            {
-                if (_tempPolygon.Points.Count >= 3)
-                {
-                    _tempPolygon.ClassId = SelectedClass.Id;
-                    _tempPolygon.ClassName = SelectedClass.Name;
-                    AddAnnotation(_tempPolygon);
-                    StatusText = $"已新增多邊形，共 {Annotations.Count} 個標註";
-                }
-                else
-                {
-                    StatusText = "多邊形點數不足（至少3點），已取消";
-                }
-                _tempPolygon = null;
-                ClearTempShapes();
-                PolygonPointCount = 0;
-                e.Handled = true;
-            }
-        }
-
-        private void AddAnnotation(Annotation ann) { Annotations.Add(ann); RedrawAllAnnotations(); }
-        private void DeleteAnnotation(Annotation? ann) { if (ann != null) { Annotations.Remove(ann); RedrawAllAnnotations(); StatusText = "已刪除標註"; } }
-
-        public void RedrawAllAnnotations()
-        {
-            Dispatcher.UIThread.Post(() =>
-            {
-                if (_canvas == null) return;
-                _canvas.Children.Clear();
-                foreach (var ann in Annotations) DrawAnnotation(ann);
-            });
-        }
-
-        private void DrawAnnotation(Annotation ann)
-        { /* 你原本程式碼 */
-            if (_canvas == null) return;
-            var isSelected = ann == SelectedAnnotation;
-            var strokeBrush = isSelected ? Brushes.Yellow : Brushes.LimeGreen;
-            if (ann.Type == AnnotationType.BoundingBox && ann.Points.Count >= 2)
-            {
-                var p1 = ToCanvasCoordinates(ann.Points[0]);
-                var p2 = ToCanvasCoordinates(ann.Points[1]);
-                double left = Math.Min(p1.X, p2.X);
-                double top = Math.Min(p1.Y, p2.Y);
-                var rect = new Avalonia.Controls.Shapes.Rectangle
-                {
-                    Stroke = strokeBrush,
-                    StrokeThickness = 2,
-                    Tag = ann
-                };
-                Canvas.SetLeft(rect, left);
-                Canvas.SetTop(rect, top);
-                rect.Width = Math.Abs(p2.X - p1.X);
-                rect.Height = Math.Abs(p2.Y - p1.Y);
-                _canvas.Children.Add(rect);
-            }
-            else if (ann.Type == AnnotationType.Polygon && ann.Points.Count >= 3)
-            {
-                for (int i = 0; i < ann.Points.Count - 1; i++)
-                    DrawLine(ann.Points[i], ann.Points[i + 1], false, strokeBrush);
-                DrawLine(ann.Points[^1], ann.Points[0], false, strokeBrush);
-                foreach (var p in ann.Points) DrawPoint(p, false, strokeBrush);
-            }
-        }
-
-        private void DrawPoint(Point imagePoint, bool isTemp, IBrush? customBrush = null)
-        { /* 你原本程式碼 */
-            if (_canvas == null) return;
-            var canvasPoint = ToCanvasCoordinates(imagePoint);
-            Dispatcher.UIThread.Post(() =>
-            {
-                var fill = customBrush ?? (isTemp ? Brushes.Red : Brushes.LimeGreen);
-                var ellipse = new Avalonia.Controls.Shapes.Ellipse
-                {
-                    Width = 6,
-                    Height = 6,
-                    Fill = fill,
-                    Tag = isTemp ? "temp" : null
-                };
-                Canvas.SetLeft(ellipse, canvasPoint.X - 3);
-                Canvas.SetTop(ellipse, canvasPoint.Y - 3);
-                _canvas.Children.Add(ellipse);
-            });
-        }
-
-        private void DrawLine(Point p1, Point p2, bool isTemp, IBrush? customBrush = null)
-        { /* 你原本程式碼 */
-            if (_canvas == null) return;
-            var canvasP1 = ToCanvasCoordinates(p1);
-            var canvasP2 = ToCanvasCoordinates(p2);
-            Dispatcher.UIThread.Post(() =>
-            {
-                var stroke = customBrush ?? (isTemp ? Brushes.Red : Brushes.LimeGreen);
-                var line = new Avalonia.Controls.Shapes.Line
-                {
-                    StartPoint = canvasP1,
-                    EndPoint = canvasP2,
-                    Stroke = stroke,
-                    StrokeThickness = 2,
-                    Tag = isTemp ? "temp" : null
-                };
-                _canvas.Children.Add(line);
-            });
-        }
-
-        private void RedrawTempPolygon()
-        {
-            ClearTempShapes(); if (_tempPolygon == null || _tempPolygon.Points.Count < 2) return;
-            for (int i = 0; i < _tempPolygon.Points.Count - 1; i++)
-                DrawLine(_tempPolygon.Points[i], _tempPolygon.Points[i + 1], true);
-            foreach (var p in _tempPolygon.Points) DrawPoint(p, true);
-        }
-
-        private void ClearTempShapes()
-        {
-            if (_canvas == null) return;
-            Dispatcher.UIThread.Post(() =>
-            {
-                var toRemove = _canvas.Children.Where(c => c.Tag is string tag && tag == "temp").ToList();
-                foreach (var child in toRemove) _canvas.Children.Remove(child);
-            });
-        }
-
-        private void DrawPreviewRectangle(Point start, Point current)
-        { /* 你原本程式碼 */
-            if (_canvas == null) return;
-            Dispatcher.UIThread.Post(() =>
-            {
-                ClearPreviewRectangle();
-                var rect = new Avalonia.Controls.Shapes.Rectangle
-                {
-                    Stroke = Brushes.Red,
-                    StrokeThickness = 2,
-                    StrokeDashArray = new Avalonia.Collections.AvaloniaList<double> { 4, 2 },
-                    Tag = "preview"
-                };
-                var canvasStart = ToCanvasCoordinates(start);
-                var canvasCurrent = ToCanvasCoordinates(current);
-                double left = Math.Min(canvasStart.X, canvasCurrent.X);
-                double top = Math.Min(canvasStart.Y, canvasCurrent.Y);
-                rect.Width = Math.Abs(canvasCurrent.X - canvasStart.X);
-                rect.Height = Math.Abs(canvasCurrent.Y - canvasStart.Y);
-                Canvas.SetLeft(rect, left);
-                Canvas.SetTop(rect, top);
-                _canvas.Children.Add(rect);
-            });
-        }
-
-        private void ClearPreviewRectangle()
-        {
-            if (_canvas == null) return;
-            Dispatcher.UIThread.Post(() =>
-            {
-                var preview = _canvas.Children.FirstOrDefault(c => c.Tag is string tag && tag == "preview");
-                if (preview != null) _canvas.Children.Remove(preview);
-            });
-        }
-
+        // ========== 處理 PDF ==========
         public async Task ProcessPdfFolderAsync(string folderPath)
-        { /* 你原本完整程式碼 */
-            // （這裡貼你原本的 ProcessPdfFolderAsync 全部內容，為了節省篇幅我省略，但請保持你原本的）
-            try
+        {
+            var pdfFiles = Directory.GetFiles(folderPath, "*.pdf", SearchOption.TopDirectoryOnly);
+            await ProcessPdfFilesAsync(pdfFiles);
+        }
+
+        public async Task ProcessPdfFileAsync(string filePath)
+        {
+            await ProcessPdfFilesAsync(new[] { filePath });
+        }
+
+        private async Task ProcessPdfFilesAsync(IEnumerable<string> pdfPaths)
+        {
+            await Dispatcher.UIThread.InvokeAsync(() =>
             {
-                var allFiles = Directory.GetFiles(folderPath);
-                var pdfFiles = allFiles.Where(f => Path.GetExtension(f).Equals(".pdf", StringComparison.OrdinalIgnoreCase)).ToList();
-                if (pdfFiles.Count == 0)
-                {
-                    StatusText = "資料夾內沒有找到 PDF 檔案";
-                    return;
-                }
                 ExpectedImagePaths.Clear();
-                _completedPaths.Clear();
                 Annotations.Clear();
                 CurrentImage = null;
-                CurrentImagePath = string.Empty;
                 CurrentImageIndex = -1;
-                StatusText = "正在產生預期頁面清單...";
-                var tempExpected = new List<string>();
-                foreach (var pdf in pdfFiles)
+                StatusText = "正在處理 PDF 文件...";
+            });
+
+            int totalProcessed = 0;
+            foreach (var pdfPath in pdfPaths)
+            {
+                var pdfFileName = Path.GetFileNameWithoutExtension(pdfPath);
+                int pageCount = 0;
+                try
                 {
-                    byte[] pdfBytes = await File.ReadAllBytesAsync(pdf);
-                    using var docLib = DocLib.Instance;
-                    using var docReader = docLib.GetDocReader(pdfBytes, new PageDimensions(1.0));
-                    var pdfName = Path.GetFileNameWithoutExtension(pdf);
-                    for (int i = 0; i < docReader.GetPageCount(); i++)
-                    {
-                        string expectedPath = Path.Combine(_uploadImagesPath, $"{pdfName}_p{i + 1:D3}.jpg");
-                        tempExpected.Add(expectedPath);
-                    }
+                    using var docReader = DocLib.Instance.GetDocReader(pdfPath, new PageDimensions(2480, 3508));
+                    pageCount = docReader.GetPageCount();
                 }
-                await Dispatcher.UIThread.InvokeAsync(() =>
+                catch (Exception ex)
                 {
-                    foreach (var p in tempExpected) ExpectedImagePaths.Add(p);
-                    StatusText = $"預計產生 {ExpectedImagePaths.Count} 張圖片，開始轉換...";
-                });
-                _ = Task.Run(async () =>
-                {
-                    int processed = 0;
-                    foreach (var pdf in pdfFiles)
-                    {
-                        var pdfName = Path.GetFileNameWithoutExtension(pdf);
-                        const double dpi = 300.0;
-                        const double scale = dpi / 72.0;
-                        byte[] pdfBytes = await File.ReadAllBytesAsync(pdf);
-                        using var docLib = DocLib.Instance;
-                        using var docReader = docLib.GetDocReader(pdfBytes, new PageDimensions(scale));
-                        for (int i = 0; i < docReader.GetPageCount(); i++)
-                        {
-                            using var pageReader = docReader.GetPageReader(i);
-                            int w = pageReader.GetPageWidth();
-                            int h = pageReader.GetPageHeight();
-                            byte[] raw = pageReader.GetImage();
-                            var info = new SKImageInfo(w, h, SKColorType.Bgra8888, SKAlphaType.Premul);
-                            using var bitmap = new SKBitmap();
-                            var handle = GCHandle.Alloc(raw, GCHandleType.Pinned);
-                            try
-                            {
-                                bool success = bitmap.InstallPixels(info, handle.AddrOfPinnedObject(), info.RowBytes);
-                                if (!success) continue;
-                                using var skImage = SKImage.FromBitmap(bitmap);
-                                using var encoded = skImage.Encode(SKEncodedImageFormat.Jpeg, 92);
-                                if (encoded == null) continue;
-                                string outPath = Path.Combine(_uploadImagesPath, $"{pdfName}_p{i + 1:D3}.jpg");
-                                Directory.CreateDirectory(_uploadImagesPath);
-                                await File.WriteAllBytesAsync(outPath, encoded.ToArray());
-                                string completed = outPath;
-                                Dispatcher.UIThread.Post(() =>
-                                {
-                                    _completedPaths.Add(completed);
-                                    processed++;
-                                    StatusText = $"已完成 {processed}/{ExpectedImagePaths.Count} 頁";
-                                    if (CurrentImageIndex >= 0 && CurrentImageIndex < ExpectedImagePaths.Count &&
-                                        string.Equals(ExpectedImagePaths[CurrentImageIndex], completed, StringComparison.OrdinalIgnoreCase))
-                                    {
-                                        LoadCurrentImage();
-                                    }
-                                });
-                            }
-                            finally { handle.Free(); }
-                        }
-                    }
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
-                        StatusText = $"轉換全部完成，共 {processed} 張圖片";
+                        StatusText = $"無法讀取 PDF：{Path.GetFileName(pdfPath)} - {ex.Message}";
                     });
-                });
+                    continue;
+                }
+
+                for (int page = 0; page < pageCount; page++)
+                {
+                    string imageName = $"{pdfFileName}_p{(page + 1):D3}.png";
+                    string imagePath = Path.Combine(imagesPath, imageName);
+                    bool exists = File.Exists(imagePath);
+
+                    if (!exists)
+                    {
+                        await Task.Run(() =>
+                        {
+                            Directory.CreateDirectory(imagesPath);
+                            using var docReader = DocLib.Instance.GetDocReader(pdfPath, new PageDimensions(2480, 3508));
+                            using var pageReader = docReader.GetPageReader(page);
+                            var rawBytes = pageReader.GetImage();
+                            int width = pageReader.GetPageWidth();
+                            int height = pageReader.GetPageHeight();
+                            var imageInfo = new SKImageInfo(width, height, SKColorType.Bgra8888);
+                            using var skData = SKData.CreateCopy(rawBytes);
+                            using var skImage = SKImage.FromPixels(imageInfo, skData);
+                            using var data = skImage.Encode(SKEncodedImageFormat.Png, 100);
+                            using var fs = File.OpenWrite(imagePath);
+                            data.SaveTo(fs);
+                        }).ConfigureAwait(false);
+                    }
+
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        ExpectedImagePaths.Add(imagePath);
+                        totalProcessed++;
+                        StatusText = $"已處理 {totalProcessed} 張圖片...";
+
+                        if (ExpectedImagePaths.Count == 1)
+                        {
+                            CurrentImageIndex = 0;
+                            _ = LoadImageAsync(0);
+                        }
+                    });
+                }
+            }
+
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                StatusText = $"處理完成，共 {totalProcessed} 張圖片。";
+                if (ExpectedImagePaths.Count == 0)
+                    StatusText = "沒有成功處理任何圖片。";
+            });
+        }
+
+        // ========== 載入圖片與標註 ==========
+        private async Task LoadImageAsync(int index)
+        {
+            if (index < 0 || index >= ExpectedImagePaths.Count) return;
+
+            CurrentImageIndex = index;
+            var path = ExpectedImagePaths[index];
+
+            try
+            {
+                using var stream = File.OpenRead(path);
+                CurrentImage = new Bitmap(stream);
+
+                Annotations.Clear();
+                _currentPolygonPoints.Clear();
+                PolygonPointCount = 0;
+                _isDragging = false;
+                _tempMovePoint = null;
+
+                await LoadAnnotationsForCurrentImageAsync();
+
+                RedrawAllAnnotations();
+                StatusText = $"已載入第 {index + 1} 張圖片";
             }
             catch (Exception ex)
             {
-                await Dispatcher.UIThread.InvokeAsync(() => StatusText = $"處理失敗：{ex.Message}");
+                StatusText = $"載入失敗: {ex.Message}";
             }
         }
 
-        private void LoadCurrentImage()
+        private async Task LoadAnnotationsForCurrentImageAsync()
         {
             if (CurrentImageIndex < 0 || CurrentImageIndex >= ExpectedImagePaths.Count) return;
-            CurrentImagePath = ExpectedImagePaths[CurrentImageIndex];
-            if (!_completedPaths.Contains(CurrentImagePath))
-            {
-                CurrentImage = null;
-                Annotations.Clear();
-                if (_canvas != null) _canvas.Children.Clear();
-                StatusText = $"頁面 {CurrentImageIndex + 1}/{ExpectedImagePaths.Count} 載入中...";
+
+            string imagePath = ExpectedImagePaths[CurrentImageIndex];
+            string labelPath = Path.Combine(labelsPath, Path.GetFileNameWithoutExtension(imagePath) + ".json");
+
+            if (!File.Exists(labelPath))
                 return;
-            }
+
             try
             {
-                CurrentImage = new Bitmap(CurrentImagePath);
-                Annotations.Clear();
-                if (_canvas != null) _canvas.Children.Clear();
-                StatusText = $"目前：{Path.GetFileName(CurrentImagePath)} ({CurrentImageIndex + 1}/{ExpectedImagePaths.Count})";
-                UpdateImageInfo();
-
-                // ★★★ 關鍵修正：強制在下一個渲染週期執行 Uniform，讓大圖自動完整填滿視窗 ★★★
-                if (_zoomBorder != null)
+                string json = await File.ReadAllTextAsync(labelPath);
+                var dtos = JsonSerializer.Deserialize<List<AnnotationDto>>(json);
+                if (dtos != null)
                 {
-                    Dispatcher.UIThread.Post(FitImageToView, DispatcherPriority.Render);
+                    Annotations.Clear();
+                    foreach (var dto in dtos)
+                    {
+                        var ann = new Annotation
+                        {
+                            ClassName = dto.ClassName,
+                            IsPolygon = dto.IsPolygon,
+                            Points = dto.Points.Select(p => new Point(p[0], p[1])).ToList()
+                        };
+                        Annotations.Add(ann);
+                    }
                 }
             }
             catch (Exception ex)
             {
-                StatusText = $"載入失敗：{ex.Message}";
+                StatusText = $"載入標註失敗：{ex.Message}";
             }
         }
 
-        private async Task OnSaveAnnotationsAsync()
+        private async Task SaveAnnotationsForCurrentImageAsync()
         {
-            if (string.IsNullOrEmpty(CurrentImagePath) || Annotations.Count == 0)
-            {
-                StatusText = "無圖片或無標註";
-                return;
-            }
-            string name = Path.GetFileNameWithoutExtension(CurrentImagePath);
-            string txtPath = Path.Combine(_saveAnnotationsPath, name + ".txt");
+            if (CurrentImageIndex < 0 || CurrentImageIndex >= ExpectedImagePaths.Count) return;
+
+            string imagePath = ExpectedImagePaths[CurrentImageIndex];
+            string labelPath = Path.Combine(labelsPath, Path.GetFileNameWithoutExtension(imagePath) + ".json");
+
             try
             {
-                Directory.CreateDirectory(_saveAnnotationsPath);
-                using var sw = new StreamWriter(txtPath);
-                foreach (var ann in Annotations)
+                Directory.CreateDirectory(labelsPath);
+
+                var dtos = Annotations.Select(ann => new AnnotationDto
                 {
-                    if (ann.Type == AnnotationType.BoundingBox && ann.Points.Count >= 2)
-                    {
-                        var p1 = ann.Points[0];
-                        var p2 = ann.Points[1];
-                        double xMin = Math.Min(p1.X, p2.X);
-                        double yMin = Math.Min(p1.Y, p2.Y);
-                        double width = Math.Abs(p2.X - p1.X);
-                        double height = Math.Abs(p2.Y - p1.Y);
-                        double xc = (xMin + width / 2) / _imageWidth;
-                        double yc = (yMin + height / 2) / _imageHeight;
-                        double w = width / _imageWidth;
-                        double h = height / _imageHeight;
-                        sw.WriteLine($"{ann.ClassId} {xc:F6} {yc:F6} {w:F6} {h:F6}");
-                    }
-                    else if (ann.Type == AnnotationType.Polygon && ann.Points.Count >= 3)
-                    {
-                        sw.Write(ann.ClassId);
-                        foreach (var p in ann.Points)
-                        {
-                            double nx = p.X / _imageWidth;
-                            double ny = p.Y / _imageHeight;
-                            sw.Write($" {nx:F6} {ny:F6}");
-                        }
-                        sw.WriteLine();
-                    }
-                }
-                StatusText = $"已儲存標註：{Path.GetFileName(txtPath)}";
+                    ClassName = ann.ClassName,
+                    IsPolygon = ann.IsPolygon,
+                    Points = ann.Points.Select(p => new List<double> { p.X, p.Y }).ToList()
+                }).ToList();
+
+                string json = JsonSerializer.Serialize(dtos);
+                await File.WriteAllTextAsync(labelPath, json);
+                StatusText = "標註已儲存";
             }
             catch (Exception ex)
             {
-                StatusText = $"儲存失敗：{ex.Message}";
+                StatusText = $"儲存標註失敗：{ex.Message}";
             }
+        }
+
+        // ========== 滑鼠事件 ==========
+        public void OnPointerPressed(Point imagePixelPos)
+        {
+            if (!IsPolygonMode)
+            {
+                _startPoint = imagePixelPos;
+                _currentRectEnd = imagePixelPos;
+                _isDragging = true;
+            }
+            else
+            {
+                _currentPolygonPoints.Add(imagePixelPos);
+                PolygonPointCount = _currentPolygonPoints.Count;
+                _tempMovePoint = imagePixelPos;
+            }
+            RedrawAllAnnotations();
+        }
+
+        public void OnPointerPressedRight(Point imagePixelPos)
+        {
+            if (IsPolygonMode && _currentPolygonPoints.Count >= 3)
+            {
+                _currentPolygonPoints.Add(imagePixelPos);
+                FinishCurrentPolygon();
+            }
+            else if (!IsPolygonMode)
+            {
+                _isDragging = false;
+            }
+        }
+
+        public void OnPointerMoved(Point imagePixelPos)
+        {
+            if (!IsPolygonMode && _isDragging)
+            {
+                _currentRectEnd = imagePixelPos;
+            }
+            else if (IsPolygonMode && _currentPolygonPoints.Count > 0)
+            {
+                _tempMovePoint = imagePixelPos;
+            }
+            RedrawAllAnnotations();
+        }
+
+        public void OnPointerReleased(Point imagePixelPos)
+        {
+            if (!IsPolygonMode && _isDragging)
+            {
+                _currentRectEnd = imagePixelPos;
+                AddRectangleAnnotation();
+                _isDragging = false;
+            }
+            RedrawAllAnnotations();
+        }
+
+        private void AddRectangleAnnotation()
+        {
+            if (_startPoint == default || _currentRectEnd == default) return;
+
+            var ann = new Annotation
+            {
+                Points = new List<Point> { _startPoint, _currentRectEnd },
+                IsPolygon = false,
+                ClassName = SelectedClass?.Name ?? "未知"
+            };
+            Annotations.Add(ann);
+            RedrawAllAnnotations();
+        }
+
+        private void FinishCurrentPolygon()
+        {
+            if (_currentPolygonPoints.Count < 3) return;
+
+            var ann = new Annotation
+            {
+                Points = new List<Point>(_currentPolygonPoints),
+                IsPolygon = true,
+                ClassName = SelectedClass?.Name ?? "未知"
+            };
+            Annotations.Add(ann);
+
+            _currentPolygonPoints.Clear();
+            PolygonPointCount = 0;
+            _tempMovePoint = null;
+            RedrawAllAnnotations();
+        }
+
+        // ========== 繪圖輔助（直接使用原始座標，Canvas 縮放由 ScaleTransform 處理） ==========
+        public void RedrawAllAnnotations()
+        {
+            if (_canvas == null || _image == null || CurrentImage == null)
+                return;
+
+            _canvas.Children.Clear();
+
+            // 已儲存的標註
+            foreach (var ann in Annotations)
+            {
+                if (ann.IsPolygon && ann.Points.Count >= 3)
+                {
+                    var polyline = new Polyline
+                    {
+                        Points = new Points(ann.Points),
+                        Stroke = Brushes.Red,
+                        StrokeThickness = 3,
+                        StrokeJoin = PenLineJoin.Round
+                    };
+                    _canvas.Children.Add(polyline);
+                }
+                else if (!ann.IsPolygon && ann.Points.Count == 2)
+                {
+                    var p1 = ann.Points[0];
+                    var p2 = ann.Points[1];
+                    var left = Math.Min(p1.X, p2.X);
+                    var top = Math.Min(p1.Y, p2.Y);
+                    var width = Math.Abs(p2.X - p1.X);
+                    var height = Math.Abs(p2.Y - p1.Y);
+
+                    var rect = new Rectangle
+                    {
+                        Width = width,
+                        Height = height,
+                        Stroke = Brushes.Blue,
+                        StrokeThickness = 3,
+                        Fill = Brushes.Transparent
+                    };
+                    Canvas.SetLeft(rect, left);
+                    Canvas.SetTop(rect, top);
+                    _canvas.Children.Add(rect);
+                }
+            }
+
+            // 臨時多邊形
+            if (IsPolygonMode && _currentPolygonPoints.Count > 0)
+            {
+                var tempPoints = new List<Point>(_currentPolygonPoints);
+                if (_tempMovePoint.HasValue)
+                    tempPoints.Add(_tempMovePoint.Value);
+
+                if (tempPoints.Count >= 2)
+                {
+                    var tempPoly = new Polyline
+                    {
+                        Points = new Points(tempPoints),
+                        Stroke = Brushes.Orange,
+                        StrokeThickness = 3,
+                        StrokeDashArray = new AvaloniaList<double> { 4, 2 }
+                    };
+                    _canvas.Children.Add(tempPoly);
+                }
+            }
+
+            // 臨時矩形拖曳
+            if (!IsPolygonMode && _isDragging && _currentRectEnd != default)
+            {
+                var p1 = _startPoint;
+                var p2 = _currentRectEnd;
+                var left = Math.Min(p1.X, p2.X);
+                var top = Math.Min(p1.Y, p2.Y);
+                var width = Math.Abs(p2.X - p1.X);
+                var height = Math.Abs(p2.Y - p1.Y);
+
+                var tempRect = new Rectangle
+                {
+                    Width = width,
+                    Height = height,
+                    Stroke = Brushes.Lime,
+                    StrokeThickness = 3,
+                    StrokeDashArray = new AvaloniaList<double> { 4, 2 },
+                    Fill = Brushes.Transparent
+                };
+                Canvas.SetLeft(tempRect, left);
+                Canvas.SetTop(tempRect, top);
+                _canvas.Children.Add(tempRect);
+            }
+        }
+
+        // ========== 內部類別 ==========
+        public class Annotation
+        {
+            public List<Point> Points { get; set; } = new();
+            public bool IsPolygon { get; set; }
+            public string ClassName { get; set; } = "";
+
+            public string DisplayText =>
+                IsPolygon
+                    ? $"多邊形 ({Points.Count} 點) - {ClassName}"
+                    : $"矩形 - {ClassName}";
+        }
+
+        public class ClassItem
+        {
+            public string Name { get; set; } = "";
+        }
+
+        private class AnnotationDto
+        {
+            public List<List<double>> Points { get; set; } = new();
+            public bool IsPolygon { get; set; }
+            public string ClassName { get; set; } = "";
         }
     }
 }

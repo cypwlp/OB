@@ -44,6 +44,7 @@
 		<PackageReference Include="Material.Avalonia.DataGrid" Version="3.13.4" />
 		<PackageReference Include="Material.Avalonia.Dialogs" Version="3.13.4" />
 		<PackageReference Include="Material.Icons.Avalonia" Version="3.0.0" />
+		<PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.0" />
 		<PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.4" />
 		<PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.3" />
 		<PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.24.2" />

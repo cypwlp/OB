@@ -3,6 +3,7 @@
   <component name="AvaloniaProject">
     <option name="projectPerEditor">
       <map>
+        <entry key="Views/AutoDet.axaml" value="OB.csproj" />
         <entry key="Views/Home.axaml" value="OB.csproj" />
         <entry key="Views/MainWin.axaml" value="OB.csproj" />
         <entry key="Views/Settings.axaml" value="OB.csproj" />
