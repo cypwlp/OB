@@ -120,11 +120,10 @@
                                    Source="{Binding CurrentImage}"
                                    Stretch="None"
                                    RenderOptions.BitmapInterpolationMode="HighQuality" />
-                            <!-- 修改重點：Canvas 固定原始尺寸，不隨縮放變形 -->
 <Canvas x:Name="DrawingCanvas"
         Background="Transparent"
         Width="{Binding ImagePixelWidth}"
-        Height="{Binding ImagePixelHeight}"
+        Height="{Binding ImagePixelHeight}"  
         PointerPressed="DrawingCanvas_PointerPressed"
         PointerMoved="DrawingCanvas_PointerMoved"
         PointerReleased="DrawingCanvas_PointerReleased"
