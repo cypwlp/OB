@@ -1,7 +1,6 @@
 ﻿using Avalonia;
 using Avalonia.Collections;
 using Avalonia.Controls;
-using Avalonia.Controls.PanAndZoom;
 using Avalonia.Controls.Shapes;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
@@ -27,7 +26,6 @@ namespace OB.ViewModels
         #region 字段
         private readonly string imagesPath = @"\\10.241.48.21\Users\OBAnotaion\images";
         private readonly string labelsPath = @"\\10.241.48.21\Users\OBAnotaion\labels";
-        public bool NotIsPolygonMode => !IsPolygonMode;
 
         // 內部繪圖變數
         private Point _startPoint;
@@ -36,7 +34,7 @@ namespace OB.ViewModels
         private List<Point> _currentPolygonPoints = new();
         private Point? _tempMovePoint;
 
-        private Image? _image;
+        private Image? _imageControl;
         private Canvas? _canvas;
         #endregion
 
@@ -52,7 +50,22 @@ namespace OB.ViewModels
             }
         }
 
-        private int _currentImageIndex;
+        private double _imagePixelWidth;
+        public double ImagePixelWidth
+        {
+            get => _imagePixelWidth;
+            set => SetProperty(ref _imagePixelWidth, value);
+        }
+
+        private double _imagePixelHeight;
+        public double ImagePixelHeight
+        {
+            get => _imagePixelHeight;
+            set => SetProperty(ref _imagePixelHeight, value);
+        }
+        public bool NotIsPolygonMode => !IsPolygonMode;
+
+        private int _currentImageIndex = -1;
         public int CurrentImageIndex
         {
             get => _currentImageIndex;
@@ -100,6 +113,14 @@ namespace OB.ViewModels
             set => SetProperty(ref _statusText, value);
         }
 
+        // 新增：滑鼠在圖片上的原始座標顯示
+        private string _mousePositionText = "X: ---   Y: ---";
+        public string MousePositionText
+        {
+            get => _mousePositionText;
+            set => SetProperty(ref _mousePositionText, value);
+        }
+
         public ObservableCollection<ClassItem> Classes { get; } = new();
 
         private ClassItem? _selectedClass;
@@ -128,8 +149,11 @@ namespace OB.ViewModels
         {
             SetRectModeCommand = new DelegateCommand(() => IsPolygonMode = false);
             SetPolygonModeCommand = new DelegateCommand(() => IsPolygonMode = true);
+
             SaveAnnotationsCommand = new AsyncDelegateCommand(SaveAnnotationsForCurrentImageAsync);
+
             ResetZoomCommand = new DelegateCommand(() => RequestResetZoom?.Invoke());
+
             CancelPolygonCommand = new DelegateCommand(() =>
             {
                 _currentPolygonPoints.Clear();
@@ -137,16 +161,19 @@ namespace OB.ViewModels
                 _tempMovePoint = null;
                 RedrawAllAnnotations();
             });
+
             PrevImageCommand = new AsyncDelegateCommand(async () =>
             {
                 if (CurrentImageIndex > 0)
                     await LoadImageAsync(CurrentImageIndex - 1);
             });
+
             NextImageCommand = new AsyncDelegateCommand(async () =>
             {
                 if (CurrentImageIndex < ExpectedImagePaths.Count - 1)
                     await LoadImageAsync(CurrentImageIndex + 1);
             });
+
             DeleteAnnotationCommand = new DelegateCommand<Annotation>(ann =>
             {
                 if (ann != null && Annotations.Contains(ann))
@@ -156,25 +183,20 @@ namespace OB.ViewModels
                 }
             });
 
+            // 初始化類別（可自行擴充）
             Classes.Add(new ClassItem { Name = "車牌" });
             Classes.Add(new ClassItem { Name = "車身" });
             Classes.Add(new ClassItem { Name = "輪胎" });
             SelectedClass = Classes.FirstOrDefault();
         }
 
-        // 保留該方法以相容，但不再需要 ZoomBorder
-        public void SetZoomBorder(ZoomBorder? zoomBorder)
+        public void SetControls(Image? image, Canvas? canvas)
         {
-            // 不再使用 ZoomBorder，此方法保留為空實現
-        }
-
-        public void SetControls(Image image, Canvas canvas)
-        {
-            _image = image;
+            _imageControl = image;
             _canvas = canvas;
         }
 
-        // ========== 處理 PDF ==========
+        // ========== PDF 處理 ==========
         public async Task ProcessPdfFolderAsync(string folderPath)
         {
             var pdfFiles = Directory.GetFiles(folderPath, "*.pdf", SearchOption.TopDirectoryOnly);
@@ -198,10 +220,12 @@ namespace OB.ViewModels
             });
 
             int totalProcessed = 0;
+
             foreach (var pdfPath in pdfPaths)
             {
                 var pdfFileName = Path.GetFileNameWithoutExtension(pdfPath);
                 int pageCount = 0;
+
                 try
                 {
                     using var docReader = DocLib.Instance.GetDocReader(pdfPath, new PageDimensions(2480, 3508));
@@ -220,8 +244,8 @@ namespace OB.ViewModels
                 {
                     string imageName = $"{pdfFileName}_p{(page + 1):D3}.png";
                     string imagePath = Path.Combine(imagesPath, imageName);
-                    bool exists = File.Exists(imagePath);
 
+                    bool exists = File.Exists(imagePath);
                     if (!exists)
                     {
                         await Task.Run(() =>
@@ -232,10 +256,12 @@ namespace OB.ViewModels
                             var rawBytes = pageReader.GetImage();
                             int width = pageReader.GetPageWidth();
                             int height = pageReader.GetPageHeight();
+
                             var imageInfo = new SKImageInfo(width, height, SKColorType.Bgra8888);
                             using var skData = SKData.CreateCopy(rawBytes);
                             using var skImage = SKImage.FromPixels(imageInfo, skData);
                             using var data = skImage.Encode(SKEncodedImageFormat.Png, 100);
+
                             using var fs = File.OpenWrite(imagePath);
                             data.SaveTo(fs);
                         }).ConfigureAwait(false);
@@ -277,6 +303,10 @@ namespace OB.ViewModels
                 using var stream = File.OpenRead(path);
                 CurrentImage = new Bitmap(stream);
 
+                // 新增：設定原始像素尺寸
+                ImagePixelWidth = CurrentImage.PixelSize.Width;
+                ImagePixelHeight = CurrentImage.PixelSize.Height;
+
                 Annotations.Clear();
                 _currentPolygonPoints.Clear();
                 PolygonPointCount = 0;
@@ -284,9 +314,10 @@ namespace OB.ViewModels
                 _tempMovePoint = null;
 
                 await LoadAnnotationsForCurrentImageAsync();
-
                 RedrawAllAnnotations();
+
                 StatusText = $"已載入第 {index + 1} 張圖片";
+                MousePositionText = "X: ---   Y: ---";
             }
             catch (Exception ex)
             {
@@ -301,13 +332,13 @@ namespace OB.ViewModels
             string imagePath = ExpectedImagePaths[CurrentImageIndex];
             string labelPath = Path.Combine(labelsPath, Path.GetFileNameWithoutExtension(imagePath) + ".json");
 
-            if (!File.Exists(labelPath))
-                return;
+            if (!File.Exists(labelPath)) return;
 
             try
             {
                 string json = await File.ReadAllTextAsync(labelPath);
                 var dtos = JsonSerializer.Deserialize<List<AnnotationDto>>(json);
+
                 if (dtos != null)
                 {
                     Annotations.Clear();
@@ -349,6 +380,7 @@ namespace OB.ViewModels
 
                 string json = JsonSerializer.Serialize(dtos);
                 await File.WriteAllTextAsync(labelPath, json);
+
                 StatusText = "標註已儲存";
             }
             catch (Exception ex)
@@ -357,7 +389,7 @@ namespace OB.ViewModels
             }
         }
 
-        // ========== 滑鼠事件 ==========
+        // ========== 滑鼠事件處理（座標皆為原始圖片像素座標） ==========
         public void OnPointerPressed(Point imagePixelPos)
         {
             if (!IsPolygonMode)
@@ -372,6 +404,7 @@ namespace OB.ViewModels
                 PolygonPointCount = _currentPolygonPoints.Count;
                 _tempMovePoint = imagePixelPos;
             }
+
             RedrawAllAnnotations();
         }
 
@@ -390,6 +423,9 @@ namespace OB.ViewModels
 
         public void OnPointerMoved(Point imagePixelPos)
         {
+            // 更新滑鼠座標顯示
+            MousePositionText = $"X: {imagePixelPos.X:F1}   Y: {imagePixelPos.Y:F1}";
+
             if (!IsPolygonMode && _isDragging)
             {
                 _currentRectEnd = imagePixelPos;
@@ -398,6 +434,7 @@ namespace OB.ViewModels
             {
                 _tempMovePoint = imagePixelPos;
             }
+
             RedrawAllAnnotations();
         }
 
@@ -409,6 +446,7 @@ namespace OB.ViewModels
                 AddRectangleAnnotation();
                 _isDragging = false;
             }
+
             RedrawAllAnnotations();
         }
 
@@ -422,6 +460,7 @@ namespace OB.ViewModels
                 IsPolygon = false,
                 ClassName = SelectedClass?.Name ?? "未知"
             };
+
             Annotations.Add(ann);
             RedrawAllAnnotations();
         }
@@ -436,18 +475,19 @@ namespace OB.ViewModels
                 IsPolygon = true,
                 ClassName = SelectedClass?.Name ?? "未知"
             };
-            Annotations.Add(ann);
 
+            Annotations.Add(ann);
             _currentPolygonPoints.Clear();
             PolygonPointCount = 0;
             _tempMovePoint = null;
+
             RedrawAllAnnotations();
         }
 
-        // ========== 繪圖輔助（直接使用原始座標，Canvas 縮放由 ScaleTransform 處理） ==========
+        // ========== 重新繪製所有標註（使用原始像素座標） ==========
         public void RedrawAllAnnotations()
         {
-            if (_canvas == null || _image == null || CurrentImage == null)
+            if (_canvas == null || CurrentImage == null)
                 return;
 
             _canvas.Children.Clear();
@@ -470,6 +510,7 @@ namespace OB.ViewModels
                 {
                     var p1 = ann.Points[0];
                     var p2 = ann.Points[1];
+
                     var left = Math.Min(p1.X, p2.X);
                     var top = Math.Min(p1.Y, p2.Y);
                     var width = Math.Abs(p2.X - p1.X);
@@ -483,13 +524,14 @@ namespace OB.ViewModels
                         StrokeThickness = 3,
                         Fill = Brushes.Transparent
                     };
+
                     Canvas.SetLeft(rect, left);
                     Canvas.SetTop(rect, top);
                     _canvas.Children.Add(rect);
                 }
             }
 
-            // 臨時多邊形
+            // 正在繪製的臨時多邊形
             if (IsPolygonMode && _currentPolygonPoints.Count > 0)
             {
                 var tempPoints = new List<Point>(_currentPolygonPoints);
@@ -509,11 +551,12 @@ namespace OB.ViewModels
                 }
             }
 
-            // 臨時矩形拖曳
+            // 正在拖曳的臨時矩形
             if (!IsPolygonMode && _isDragging && _currentRectEnd != default)
             {
                 var p1 = _startPoint;
                 var p2 = _currentRectEnd;
+
                 var left = Math.Min(p1.X, p2.X);
                 var top = Math.Min(p1.Y, p2.Y);
                 var width = Math.Abs(p2.X - p1.X);
@@ -528,6 +571,7 @@ namespace OB.ViewModels
                     StrokeDashArray = new AvaloniaList<double> { 4, 2 },
                     Fill = Brushes.Transparent
                 };
+
                 Canvas.SetLeft(tempRect, left);
                 Canvas.SetTop(tempRect, top);
                 _canvas.Children.Add(tempRect);
