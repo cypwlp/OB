@@ -5,106 +5,137 @@
              xmlns:micons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              xmlns:vm="using:OB.ViewModels"
              mc:Ignorable="d"
-             d:DesignWidth="1500"
-             d:DesignHeight="927"
+             d:DesignWidth="1600"
+             d:DesignHeight="1000"
              x:Class="OB.Views.AutoDet"
              x:DataType="vm:AutoDetViewModel">
     <Grid RowDefinitions="Auto,*,Auto">
-        <Border Grid.Row="0" Background="{DynamicResource MaterialPrimaryColor}" Padding="16,8" BoxShadow="0 2 4 0 #1F000000">
+
+        <!-- 頂部工具列：更大間距、更現代化 -->
+        <Border Grid.Row="0"
+                Background="{DynamicResource MaterialPrimaryColor}"
+                Padding="24,16"
+                BoxShadow="0 4 16 0 #2A000000">
             <DockPanel>
-                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Spacing="12">
-                    <Button x:Name="LoadFolderButton" Classes="Filled" Click="LoadFolderButton_Click" MinWidth="120">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <micons:MaterialIcon Kind="FolderOpenOutline" Width="20" Height="20"/>
-                            <TextBlock Text="載入PDF資料夾" VerticalAlignment="Center"/>
+                <!-- 左側工具群 -->
+                <StackPanel DockPanel.Dock="Left"
+                            Orientation="Horizontal"
+                            Spacing="16">
+                    <Button Classes="Filled TonalLarge" MinWidth="148" CornerRadius="16"
+                            x:Name="LoadFolderButton" Click="LoadFolderButton_Click">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <micons:MaterialIcon Kind="FolderOpen" Width="24" Height="24"/>
+                            <TextBlock Text="載入PDF資料夾" VerticalAlignment="Center" FontSize="14"/>
                         </StackPanel>
                     </Button>
-                    <Button x:Name="LoadFileButton" Classes="Filled" Click="LoadFileButton_Click" MinWidth="120">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <micons:MaterialIcon Kind="FileOutline" Width="20" Height="20"/>
-                            <TextBlock Text="載入PDF文件" VerticalAlignment="Center"/>
+                    <Button Classes="Filled TonalLarge" MinWidth="148" CornerRadius="16"
+                            x:Name="LoadFileButton" Click="LoadFileButton_Click">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <micons:MaterialIcon Kind="FilePdfBox" Width="24" Height="24"/>
+                            <TextBlock Text="載入PDF文件" VerticalAlignment="Center" FontSize="14"/>
                         </StackPanel>
                     </Button>
-                    <Separator Width="1" Margin="0,0" Height="32" VerticalAlignment="Center" Background="{DynamicResource MaterialOutlineColor}" />
+                    <Separator Width="1" Height="40" Margin="8,0"
+                               VerticalAlignment="Center"
+                               Background="{DynamicResource MaterialOutlineVariantColor}"/>
+                    <!-- 模式切換：移除 GroupName，靠 VM 互斥 -->
                     <ToggleButton Classes="Outlined"
                                   IsChecked="{Binding NotIsPolygonMode}"
                                   Command="{Binding SetRectModeCommand}"
-                                  MinWidth="30">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <micons:MaterialIcon Kind="RectangleOutline" Width="20" Height="20"/>
-                            <TextBlock Text="矩形" VerticalAlignment="Center"/>
-                        </StackPanel>
+                                  MinWidth="56" CornerRadius="16,0,0,16"
+                                  ToolTip.Tip="矩形模式">
+                        <micons:MaterialIcon Kind="RectangleOutline" Width="24" Height="24"/>
                     </ToggleButton>
                     <ToggleButton Classes="Outlined"
                                   IsChecked="{Binding IsPolygonMode}"
                                   Command="{Binding SetPolygonModeCommand}"
-                                  MinWidth="110">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <micons:MaterialIcon Kind="VectorPolygon" Width="20" Height="20"/>
-                            <TextBlock Text="多邊形" VerticalAlignment="Center"/>
-                        </StackPanel>
+                                  MinWidth="56" CornerRadius="0,16,16,0"
+                                  ToolTip.Tip="多邊形模式">
+                        <micons:MaterialIcon Kind="VectorPolygon" Width="24" Height="24"/>
                     </ToggleButton>
                     <ComboBox ItemsSource="{Binding Classes}"
                               SelectedItem="{Binding SelectedClass}"
                               DisplayMemberBinding="{Binding Name}"
-                              MinWidth="120"
-                              VerticalAlignment="Center"
-                              Classes="Outlined"/>
-                    <Button Classes="FilledTonal" Command="{Binding SaveAnnotationsCommand}" MinWidth="120">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <micons:MaterialIcon Kind="ContentSaveOutline" Width="20" Height="20"/>
-                            <TextBlock Text="儲存標註" VerticalAlignment="Center"/>
+                              MinWidth="160" MaxDropDownHeight="360"
+                              Classes="FilledOutlined" CornerRadius="16"
+                              VerticalAlignment="Center"/>
+                    <Button Classes="FilledTonal" Command="{Binding SaveAnnotationsCommand}"
+                            MinWidth="148" CornerRadius="16">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <micons:MaterialIcon Kind="ContentSaveAll" Width="24" Height="24"/>
+                            <TextBlock Text="儲存標註" VerticalAlignment="Center" FontSize="14"/>
                         </StackPanel>
                     </Button>
-                    <Button Classes="Outlined" Command="{Binding ResetZoomCommand}" MinWidth="100">
-                        重置視圖
+                    <Button Classes="Outlined" Command="{Binding ResetZoomCommand}"
+                            MinWidth="120" CornerRadius="16">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <micons:MaterialIcon Kind="Refresh" Width="20" Height="20"/>
+                            <TextBlock Text="重置視圖" VerticalAlignment="Center"/>
+                        </StackPanel>
                     </Button>
-                    <Button Classes="Text"
-                            Command="{Binding CancelPolygonCommand}"
+                    <Button Classes="Text" Command="{Binding CancelPolygonCommand}"
                             IsVisible="{Binding IsPolygonMode}"
-                            MinWidth="80">
-                        <StackPanel Orientation="Horizontal" Spacing="4">
-                            <micons:MaterialIcon Kind="Cancel" Width="16" Height="16"/>
+                            MinWidth="110" CornerRadius="16">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <micons:MaterialIcon Kind="Cancel" Width="20" Height="20"/>
                             <TextBlock Text="取消繪製" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
                 </StackPanel>
-                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
-                    <Button Classes="Outlined" Command="{Binding PrevImageCommand}" MinWidth="40">
-                        <micons:MaterialIcon Kind="ArrowLeft" />
-                    </Button>
-                    <TextBlock VerticalAlignment="Center" FontWeight="Medium"
-                               Foreground="{DynamicResource MaterialPrimaryForegroundColor}">
-                        <TextBlock.Text>
-                            <MultiBinding StringFormat="{}{0} / {1}">
-                                <Binding Path="CurrentImageIndex" />
-                                <Binding Path="ExpectedImagePaths.Count" FallbackValue="無圖片" />
-                            </MultiBinding>
-                        </TextBlock.Text>
-                    </TextBlock>
-                    <Button Classes="Outlined" Command="{Binding NextImageCommand}" MinWidth="40">
-                        <micons:MaterialIcon Kind="ArrowRight" />
-                    </Button>
+
+                <!-- 右側狀態資訊 -->
+                <StackPanel DockPanel.Dock="Right"
+                            Orientation="Horizontal"
+                            Spacing="24"
+                            VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <Button Classes="IconButton Outlined" Command="{Binding PrevImageCommand}"
+                                Width="40" Height="40" CornerRadius="12">
+                            <micons:MaterialIcon Kind="ChevronLeft" Width="24" Height="24"/>
+                        </Button>
+<TextBlock VerticalAlignment="Center"
+           FontWeight="SemiBold"
+           FontSize="15"
+           Foreground="{DynamicResource MaterialOnPrimaryColor}">
+    <TextBlock.Text>
+        <MultiBinding StringFormat="{}{0} / {1}" FallbackValue="— / —">
+            <Binding Path="CurrentImageIndex" />
+            <Binding Path="ExpectedImagePaths.Count" />
+        </MultiBinding>
+    </TextBlock.Text>
+</TextBlock>
+                        <Button Classes="IconButton Outlined" Command="{Binding NextImageCommand}"
+                                Width="40" Height="40" CornerRadius="12">
+                            <micons:MaterialIcon Kind="ChevronRight" Width="24" Height="24"/>
+                        </Button>
+                    </StackPanel>
                     <TextBlock Text="{Binding ZoomLevel, StringFormat={}{0:P0}}"
-                               VerticalAlignment="Center" Margin="8,0" FontWeight="Medium"/>
+                               VerticalAlignment="Center" FontSize="14" FontWeight="Medium"
+                               Foreground="{DynamicResource MaterialOnPrimaryColor}"/>
                     <TextBlock Text="{Binding ModeText}"
-                               VerticalAlignment="Center" FontWeight="Medium" Margin="0,0,8,0"
-                               Foreground="{DynamicResource MaterialPrimaryForegroundColor}"/>
+                               VerticalAlignment="Center" FontSize="14" FontWeight="Medium"
+                               Foreground="{DynamicResource MaterialOnPrimaryColor}"/>
                     <TextBlock Text="{Binding PolygonPointCount, StringFormat='點數: {0}'}"
-                               VerticalAlignment="Center" FontWeight="Medium"
+                               VerticalAlignment="Center" FontSize="14" FontWeight="Medium"
                                IsVisible="{Binding IsPolygonMode}"
-                               Foreground="{DynamicResource MaterialPrimaryForegroundColor}"/>
-                    <!-- 新增：顯示滑鼠座標 -->
+                               Foreground="{DynamicResource MaterialOnPrimaryColor}"/>
                     <TextBlock Text="{Binding MousePositionText}"
-                               VerticalAlignment="Center" FontWeight="Medium" Margin="16,0,0,0"
-                               Foreground="{DynamicResource MaterialPrimaryForegroundColor}"/>
+                               VerticalAlignment="Center" FontSize="13" FontWeight="Regular"
+                               Foreground="{DynamicResource MaterialOnPrimaryColor}"
+                               Margin="20,0,0,0"/>
                 </StackPanel>
             </DockPanel>
         </Border>
 
-        <Grid Grid.Row="1" ColumnDefinitions="*, 280" Margin="16">
-            <Border Grid.Column="0" Classes="Card Elevation2" CornerRadius="16"
-                    Background="{DynamicResource MaterialPaperColor}">
+        <!-- 主工作區 -->
+        <Grid Grid.Row="1" ColumnDefinitions="*,320" Margin="24">
+
+            <!-- 圖片顯示區：用 Border + Classes 模擬 Card -->
+            <Border Grid.Column="0"
+                    Classes="Card Elevation4"
+                    CornerRadius="24"
+                    Background="{DynamicResource MaterialSurfaceColor}"
+                    Padding="4">
                 <ScrollViewer x:Name="ScrollViewer"
                               HorizontalScrollBarVisibility="Auto"
                               VerticalScrollBarVisibility="Auto"
@@ -113,58 +144,79 @@
                             Background="Transparent"
                             RenderTransformOrigin="0,0">
                         <Border.RenderTransform>
-                            <ScaleTransform  ScaleX="1" ScaleY="1" />
+                            <ScaleTransform ScaleX="1" ScaleY="1" />
                         </Border.RenderTransform>
                         <Grid>
                             <Image x:Name="ImageViewer"
                                    Source="{Binding CurrentImage}"
                                    Stretch="None"
                                    RenderOptions.BitmapInterpolationMode="HighQuality" />
-<Canvas x:Name="DrawingCanvas"
-        Background="Transparent"
-        Width="{Binding ImagePixelWidth}"
-        Height="{Binding ImagePixelHeight}"  
-        PointerPressed="DrawingCanvas_PointerPressed"
-        PointerMoved="DrawingCanvas_PointerMoved"
-        PointerReleased="DrawingCanvas_PointerReleased"
-        PointerWheelChanged="DrawingCanvas_PointerWheelChanged" />
+                            <Canvas x:Name="DrawingCanvas"
+                                    Background="Transparent"
+                                    Width="{Binding ImagePixelWidth}"
+                                    Height="{Binding ImagePixelHeight}"
+                                    PointerPressed="DrawingCanvas_PointerPressed"
+                                    PointerMoved="DrawingCanvas_PointerMoved"
+                                    PointerReleased="DrawingCanvas_PointerReleased"
+                                    PointerWheelChanged="DrawingCanvas_PointerWheelChanged" />
                         </Grid>
                     </Border>
                 </ScrollViewer>
             </Border>
 
-            <Border Grid.Column="1" Margin="16,0,0,0" Classes="Card Elevation3" CornerRadius="16" Padding="8"
-                    BorderThickness="1" BorderBrush="Black">
-                <Grid RowDefinitions="Auto,*" Background="{DynamicResource MaterialPaperColor}">
-                    <TextBlock Grid.Row="0" Text="標籤列表" Classes="Headline6" Margin="16,12,16,8"/>
+            <!-- 右側標籤列表：用 Border + Classes 模擬 Card -->
+            <Border Grid.Column="1" Margin="24,0,0,0"
+                    Classes="Card Elevation3"
+                    CornerRadius="24"
+                    Padding="16"
+                    Background="{DynamicResource MaterialSurfaceColor}">
+                <Grid RowDefinitions="Auto,*">
+                    <TextBlock Grid.Row="0" Text="標籤列表"
+                               Classes="HeadlineMedium" Margin="0,0,0,16"
+                               Foreground="{DynamicResource MaterialOnSurfaceColor}"/>
                     <ScrollViewer Grid.Row="1">
-                        <ListBox ItemsSource="{Binding Annotations}" SelectedItem="{Binding SelectedAnnotation}" Margin="4">
-                            <ListBox.ItemTemplate>
+                        <ItemsControl ItemsSource="{Binding Annotations}">
+                            <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Margin="4" Padding="8" BorderThickness="1" BorderBrush="{DynamicResource MaterialOutlineColor}" CornerRadius="8">
+                                    <!-- 內部項目也用 Border 模擬小 Card -->
+                                    <Border Margin="0,0,0,12"
+                                            Classes="Card Elevation1"
+                                            CornerRadius="16"
+                                            Padding="12"
+                                            Background="{DynamicResource MaterialSurfaceVariantColor}">
                                         <DockPanel>
                                             <Button DockPanel.Dock="Right"
-                                                    Content="✖"
-                                                    Background="Transparent"
-                                                    BorderThickness="0"
+                                                    Classes="IconButton Text"
                                                     Command="{Binding $parent[UserControl].DataContext.DeleteAnnotationCommand}"
                                                     CommandParameter="{Binding}"
-                                                    Width="24" Height="24"
-                                                    ToolTip.Tip="刪除此標註"/>
-                                            <TextBlock Text="{Binding DisplayText}" VerticalAlignment="Center" Margin="8,0"/>
+                                                    Width="32" Height="32">
+                                                <micons:MaterialIcon Kind="DeleteOutline" Width="20" Height="20"/>
+                                            </Button>
+                                            <TextBlock Text="{Binding DisplayText}"
+                                                       VerticalAlignment="Center"
+                                                       FontSize="14"
+                                                       TextWrapping="Wrap"
+                                                       Foreground="{DynamicResource MaterialOnSurfaceColor}"/>
                                         </DockPanel>
                                     </Border>
                                 </DataTemplate>
-                            </ListBox.ItemTemplate>
-                        </ListBox>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                     </ScrollViewer>
                 </Grid>
             </Border>
         </Grid>
 
-        <Border Grid.Row="2" Background="{DynamicResource MaterialSurfaceVariantColor}" BorderThickness="0,1,0,0"
-                BorderBrush="{DynamicResource MaterialOutlineColor}" Padding="16,8">
-            <TextBlock Text="{Binding StatusText}" Foreground="{DynamicResource MaterialOnSurfaceVariantColor}" FontSize="13"/>
+        <!-- 底部狀態列 -->
+        <Border Grid.Row="2"
+                Background="{DynamicResource MaterialSurfaceVariantColor}"
+                Padding="24,12"
+                BorderThickness="0,1,0,0"
+                BorderBrush="{DynamicResource MaterialOutlineColor}">
+            <TextBlock Text="{Binding StatusText}"
+                       Foreground="{DynamicResource MaterialOnSurfaceVariantColor}"
+                       FontSize="14" FontWeight="Medium"/>
         </Border>
+
     </Grid>
 </UserControl>
