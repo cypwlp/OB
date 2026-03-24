@@ -35,7 +35,7 @@
                                     <Image Width="64" Height="64"
                                            Source="avares://OB/Assets/avalonia-logo.ico"
                                            Margin="0,0,0,8" />
-                                    <TextBlock Classes="Headline6" Text="OB 檢測系統"
+                                    <TextBlock Classes="Headline6" Text="Topmix.Ltd"
                                                HorizontalAlignment="Center" />
                                 </StackPanel>
                             </controls:ColorZone>
@@ -83,6 +83,12 @@
                                               Width="32" Height="32" Padding="4">
                                     <avalonia:MaterialIcon Kind="Menu" Width="24" Height="24" />
                                 </ToggleButton>
+                                <Button Theme="{StaticResource MaterialFlatButton}" Command="{Binding BackCommand}">
+									<avalonia:MaterialIcon Kind="ArrowLeft" Width="24" Height="24" />
+                                </Button>
+                                <Button Theme="{StaticResource MaterialFlatButton}" Command="{Binding ForwardCommand}">
+									<avalonia:MaterialIcon Kind="ArrowRight" Width="24" Height="24" />
+                                </Button>
                                 <TextBlock Classes="Headline6"
                                            Text="{Binding SelectedMenuItem.Title, FallbackValue='主頁'}"
                                            VerticalAlignment="Center"

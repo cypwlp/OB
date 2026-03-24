@@ -17,7 +17,6 @@ namespace OB.ViewModels
 {
     public class MainViewModel : BindableBase
     {
-        
         private bool _isMenuExpanded = true;
         private LeftMenuItem? _selectedMenuItem;
         private LogUserInfo _logUser;
@@ -53,7 +52,7 @@ namespace OB.ViewModels
                 {
                     if (!string.IsNullOrEmpty(value.ViewName))
                     {
-                        _ = NavigateAsync(value);
+                        _ = NavigateAsync(value, null);
                     }
                 }
             }
@@ -62,9 +61,11 @@ namespace OB.ViewModels
         public ObservableCollection<LeftMenuItem> MenuItems { get; set; }
         public DelegateCommand ToggleMenuCommand { get; }
         public DelegateCommand<LeftMenuItem> SelectMenuItemCommand { get; }
-
+        public DelegateCommand BackCommand { get; }
+        public DelegateCommand ForwardCommand { get; }
 
         public DelegateCommand ShowAboutCommand { get; set; }
+
         public MainViewModel(IRegionManager regionManager)
         {
             _regionManager = regionManager;
@@ -75,7 +76,7 @@ namespace OB.ViewModels
             {
                 if (menuItem != null && !string.IsNullOrEmpty(menuItem.ViewName))
                 {
-                    await NavigateAsync(menuItem);
+                    await NavigateAsync(menuItem, null);
                 }
             });
             ShowAboutCommand = new DelegateCommand(async () =>
@@ -84,6 +85,8 @@ namespace OB.ViewModels
                 var dialogService = Prism.Ioc.ContainerLocator.Container.Resolve<Prism.Dialogs.IDialogService>();
                 await dialogService.ShowDialogAsync("About", parameters);
             });
+            BackCommand = new DelegateCommand(async () => await BackAsync());
+            ForwardCommand = new DelegateCommand(async () => await ForwardAsync());
             _selectedMenuItem = MenuItems.FirstOrDefault();
         }
 
@@ -92,7 +95,8 @@ namespace OB.ViewModels
             MenuItems =
             [
                 new() { Icon = MaterialIconKind.Home, Title = "首页", ViewName = "Home" },
-                new() {
+                new()
+                {
                     Icon = MaterialIconKind.Database,
                     Title = "檢測系統",
                     SubItems =
@@ -101,6 +105,7 @@ namespace OB.ViewModels
                         new() { Icon = MaterialIconKind.History, Title = "歷史數據", ViewName = "History" },
                         new() { Icon = MaterialIconKind.SmokeDetector, Title = "自動檢測", ViewName = "AutoDet" },
                         new() { Icon = MaterialIconKind.GlobeModel, Title = "模型管理", ViewName = "OnnxModelMS" }
+
                     ]
                 },
 
@@ -114,18 +119,19 @@ namespace OB.ViewModels
                         new() { Icon = MaterialIconKind.FormatListBulleted, Title = "工單列表", ViewName = "WorkOrder" }
                     ]
                 },
-                new LeftMenuItem { Icon = MaterialIconKind.CogOutline, Title = "設置",
-                SubItems = 
+                new LeftMenuItem
+                {
+                    Icon = MaterialIconKind.CogOutline, Title = "設置",
+                    SubItems =
                     [
                         new() { Icon = MaterialIconKind.Cog, Title = "檢測設置", ViewName = "Settings" },
                         new() { Icon = MaterialIconKind.Account, Title = "個人中心", ViewName = "Personal" }
                     ]
-
                 }
             ];
         }
 
-        public async Task NavigateAsync(LeftMenuItem menuItem)
+        public async Task NavigateAsync(LeftMenuItem menuItem, NavigationParameters? paras = null)
         {
             if (menuItem == null || string.IsNullOrEmpty(menuItem.ViewName)) return;
 
@@ -134,6 +140,16 @@ namespace OB.ViewModels
                 { "LogUser", LogUser },
                 { "dbtools", RemoteDBTools }
             };
+
+            if (paras != null)
+            {
+                foreach (var param in paras)
+                {
+                    if (!parameters.ContainsKey(param.Key))
+                        parameters.Add(param.Key, param.Value);
+                }
+            }
+
 
             _regionManager.Regions["MainRegion"].RequestNavigate(
                 menuItem.ViewName,
@@ -145,8 +161,46 @@ namespace OB.ViewModels
                     }
                     else
                     {
+                        System.Diagnostics.Debug.WriteLine(
+                            $"導航至 {menuItem.ViewName} 失敗: {callback.Exception?.Message}");
+                    }
+                },
+                parameters
+            );
+        }
 
-                        System.Diagnostics.Debug.WriteLine($"導航至 {menuItem.ViewName} 失敗: {callback.Exception?.Message}");
+        public async Task NavigateAsync(string menuItem, NavigationParameters? paras = null)
+        {
+            if (menuItem == null || string.IsNullOrEmpty(menuItem)) return;
+
+            var parameters = new NavigationParameters
+            {
+                { "LogUser", LogUser },
+                { "dbtools", RemoteDBTools }
+            };
+
+            if (paras != null)
+            {
+                foreach (var param in paras)
+                {
+                    if (!parameters.ContainsKey(param.Key))
+                        parameters.Add(param.Key, param.Value);
+                }
+            }
+
+
+            _regionManager.Regions["MainRegion"].RequestNavigate(
+                menuItem,
+                callback =>
+                {
+                    if (callback.Success == true)
+                    {
+                        _journal = callback.Context.NavigationService.Journal;
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine(
+                            $"導航至 {menuItem} 失敗: {callback.Exception?.Message}");
                     }
                 },
                 parameters
@@ -155,14 +209,32 @@ namespace OB.ViewModels
 
         public async Task OnNavigatedToAsync(NavigationContext navigationContext)
         {
-    
         }
+
+
+        private async Task BackAsync()
+        {
+            if (_journal?.CanGoBack == true)
+            {
+                _journal.GoBack();
+            }
+        }
+
+        private async Task ForwardAsync()
+        {
+            if (_journal?.CanGoForward == true)
+            {
+                _journal.GoForward();
+            }
+        }
+
+
         public async Task DefaultNavigateAsync()
         {
             var homeItem = MenuItems.FirstOrDefault(x => x.ViewName == "Home");
             if (homeItem != null)
             {
-                await NavigateAsync(homeItem);
+                await NavigateAsync(homeItem, null);
             }
         }
     }

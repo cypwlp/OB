@@ -46,13 +46,16 @@ namespace OB.ViewModels
             ShowDetailsCommand = new DelegateCommand<FileSystemItem>(async item =>
             {
                 if (item == null) return;
-                var parameters = new DialogParameters
+                var parameters = new Prism.Navigation.NavigationParameters
                 {
                     { "modelPath", item.FullPath },
                     { "modelName", item.Name }
                 };
-                var dialogService = Prism.Ioc.ContainerLocator.Container.Resolve<IDialogService>();
-                await dialogService.ShowDialogAsync("ModelClass", parameters);
+                //var dialogService = Prism.Ioc.ContainerLocator.Container.Resolve<IDialogService>();
+                //await dialogService.ShowDialogAsync("ModelClass", parameters);
+                MainViewModel mv = Prism.Ioc.ContainerLocator.Container.Resolve<MainViewModel>();
+               await mv.NavigateAsync("ModelClass", parameters).ConfigureAwait(false);
+
             });
 
             SearchCommand = new DelegateCommand(ExecuteSearch);

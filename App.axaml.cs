@@ -49,7 +49,7 @@ namespace OB
             containerRegistry.Register<IOnnxModelInspector, OnnxModelInspector>();
 
             // ‘]É‘ Dialog
-            containerRegistry.RegisterDialog<ModelClass, ModelClassViewModel>("ModelClass");
+            containerRegistry.RegisterForNavigation<ModelClass, ModelClassViewModel>("ModelClass");
         }
 
         public override void OnFrameworkInitializationCompleted()
