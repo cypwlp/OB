@@ -36,7 +36,9 @@ namespace OB
             containerRegistry.RegisterDialog<UpdateDialog, UpdateViewModel>();
             containerRegistry.RegisterDialog<About, AboutViewModel>();
             containerRegistry.RegisterDialog<UploadDialog, UploadViewModel>();
+            containerRegistry.RegisterDialog<ModelClass, ModelClassViewModel>();
             containerRegistry.RegisterForNavigation<AutoDet, AutoDetViewModel>();
+            containerRegistry.RegisterForNavigation<OnnxModelMS,OnnxModelMSViewModel>();
         }
 
         public override void OnFrameworkInitializationCompleted()

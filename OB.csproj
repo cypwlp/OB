@@ -84,6 +84,9 @@
 			<Generator>SettingsSingleFileGenerator</Generator>
 			<LastGenOutput>OB.Designer.cs</LastGenOutput>
 		</None>
+		<None Update="OnnxModel\test.onnx">
+		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
 		<None Update="OnnxModel\yolo11s_fixed.onnx">
 		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</None>

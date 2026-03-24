@@ -99,7 +99,8 @@ namespace OB.ViewModels
                     [
                         new() { Icon = MaterialIconKind.Magnify, Title = "實時檢測", ViewName = "Detect" },
                         new() { Icon = MaterialIconKind.History, Title = "歷史數據", ViewName = "History" },
-                        new() { Icon = MaterialIconKind.SmokeDetector, Title = "自動檢測", ViewName = "AutoDet" }
+                        new() { Icon = MaterialIconKind.SmokeDetector, Title = "自動檢測", ViewName = "AutoDet" },
+                        new() { Icon = MaterialIconKind.GlobeModel, Title = "模型管理", ViewName = "OnnxModelMS" }
                     ]
                 },
 
