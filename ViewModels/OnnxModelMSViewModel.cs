@@ -10,6 +10,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using OB.Services;
 
 namespace OB.ViewModels
 {
@@ -17,7 +18,6 @@ namespace OB.ViewModels
     {
         private List<FileSystemItem> _allItems = new();
         private bool _isLoading;
-
         public bool IsLoading
         {
             get => _isLoading;
@@ -37,9 +37,12 @@ namespace OB.ViewModels
         public DelegateCommand SearchCommand { get; }
 
         private readonly string _defaultFolder = "./OnnxModel";
+        private readonly IActiveModelService _activeModelService;
 
-        public OnnxModelMSViewModel()
+        public OnnxModelMSViewModel(IActiveModelService activeModelService)
         {
+            _activeModelService = activeModelService;
+
             ShowDetailsCommand = new DelegateCommand<FileSystemItem>(async item =>
             {
                 if (item == null) return;
@@ -84,14 +87,12 @@ namespace OB.ViewModels
             }
 
             IsLoading = true;
-
             await Task.Run(() =>
             {
                 try
                 {
                     var dirInfo = new DirectoryInfo(absolutePath);
                     var items = new List<FileSystemItem>();
-
                     foreach (var file in dirInfo.GetFiles("*.onnx", SearchOption.TopDirectoryOnly))
                     {
                         items.Add(new FileSystemItem
@@ -102,7 +103,6 @@ namespace OB.ViewModels
                             LastModified = file.LastWriteTime
                         });
                     }
-
                     _allItems = items.OrderBy(i => i.Name).ToList();
                 }
                 catch (Exception ex)
@@ -119,10 +119,8 @@ namespace OB.ViewModels
         {
             if (Path.IsPathRooted(relativePath))
                 return relativePath;
-
             if (relativePath.StartsWith("./"))
                 relativePath = relativePath[2..];
-
             return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, relativePath);
         }
 
@@ -134,28 +132,24 @@ namespace OB.ViewModels
             public string FullPath { get; set; } = string.Empty;
             public long? Size { get; set; }
             public DateTime LastModified { get; set; }
-
             public string CreatedTimeDisplay => LastModified.ToString("yyyy-MM-dd HH:mm");
-
             public string SizeDisplay => Size.HasValue
                 ? $"{Size.Value / (1024.0 * 1024.0):0.##} MB"
                 : "--";
 
             private bool _isEnabled;
-
             public bool IsEnabled
             {
                 get => _isEnabled;
                 set
                 {
                     if (_isEnabled == value) return;
-
                     _isEnabled = value;
                     RaisePropertyChanged(nameof(IsEnabled));
 
-                    // 互斥邏輯：當前項被啟用時，把其他所有項強制關閉
                     if (value && OwnerViewModel != null)
                     {
+                        // 互斥：關閉其他項目
                         foreach (var other in OwnerViewModel.Items)
                         {
                             if (other != this)
@@ -163,6 +157,10 @@ namespace OB.ViewModels
                                 other.IsEnabled = false;
                             }
                         }
+
+                        // 通知全域服務目前啟用的模型
+                        var activeService = Prism.Ioc.ContainerLocator.Container.Resolve<IActiveModelService>();
+                        activeService.SetActiveModel(this.FullPath);
                     }
                 }
             }

@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
 using OB.Models;
+using OB.Services;
 using OB.Services.impls;
 using OB.Tools;
 using OB.ViewModels;
@@ -36,9 +37,19 @@ namespace OB
             containerRegistry.RegisterDialog<UpdateDialog, UpdateViewModel>();
             containerRegistry.RegisterDialog<About, AboutViewModel>();
             containerRegistry.RegisterDialog<UploadDialog, UploadViewModel>();
-            containerRegistry.RegisterDialog<ModelClass, ModelClassViewModel>();
+            //containerRegistry.RegisterDialog<ModelClass, ModelClassViewModel>();
             containerRegistry.RegisterForNavigation<AutoDet, AutoDetViewModel>();
             containerRegistry.RegisterForNavigation<OnnxModelMS,OnnxModelMSViewModel>();
+
+            // ‘]É‘ ActiveModelService£®ÜŒ¿˝£©
+            containerRegistry.RegisterSingleton<IActiveModelService, ActiveModelService>();
+
+            // ‘]É‘ Analyzer£®»Áπ˚ƒ„ﬂÄõ]‘]É‘£©
+            containerRegistry.Register<IOnnxModelAnalyzer, OnnxModelAnalyzer>();
+            containerRegistry.Register<IOnnxModelInspector, OnnxModelInspector>();
+
+            // ‘]É‘ Dialog
+            containerRegistry.RegisterDialog<ModelClass, ModelClassViewModel>("ModelClass");
         }
 
         public override void OnFrameworkInitializationCompleted()
