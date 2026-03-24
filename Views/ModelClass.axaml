@@ -2,10 +2,10 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:vm="clr-namespace:OB.ViewModels.Dialogs"
+             xmlns:vm="clr-namespace:OB.ViewModels"
              mc:Ignorable="d"
-             d:DesignWidth="400"
-             d:DesignHeight="250"
+             d:DesignWidth="1000"
+             d:DesignHeight="618"
              x:DataType="vm:ModelClassViewModel"
              x:Class="OB.ModelClass">
 
@@ -109,6 +109,41 @@
                     </StackPanel>
                 </Border>
 
+                <Border>
+        <DataGrid Grid.Row="2"
+                      Margin="12,0,12,16"
+                      ItemsSource="{Binding ClassInfos}"
+                      CanUserResizeColumns="True"
+                      CanUserReorderColumns="False"
+                      GridLinesVisibility="None"
+                      BorderThickness="0"
+                      Background="Transparent"
+                      RowBackground="{DynamicResource MaterialCardBackgroundBrush}">
+
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="序號" 
+                                        Binding="{Binding Suffix}" 
+                                        Width="70" 
+                                        IsReadOnly="True"/>
+                    <DataGridTextColumn Header="類別名稱" 
+                                        Binding="{Binding ClassName}" 
+                                        Width="*" 
+                                        IsReadOnly="True"/>
+
+                    <!-- 操作 -->
+                    <DataGridTemplateColumn Header="操作" Width="100">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Button Content="詳情"
+                                        Classes="flat"
+                                        HorizontalAlignment="Center"
+                                        CommandParameter="{Binding}"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+                </Border>
                 <!-- 5. 自訂資訊卡片（響應式） -->
                 <Border Classes="MaterialCard">
                     <StackPanel Spacing="16">
