@@ -3,106 +3,144 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:OB.ViewModels.Dialogs"
-             mc:Ignorable="d"
-             d:DesignWidth="950" 
-             d:DesignHeight="700"
+             xmlns:avalonia="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             mc:Ignorable="d" 
+             d:DesignWidth="980"
+             d:DesignHeight="720"
              x:DataType="vm:ModelClassViewModel"
              x:Class="OB.ModelClass">
-
     <Border Background="{DynamicResource MaterialCardBackgroundBrush}"
-            CornerRadius="12"
-            Margin="16"
-            Padding="24">
+            CornerRadius="16"
+            Margin="24"
+            Padding="32"
+            BoxShadow="0 8 24 0 #1F000000"> <!-- 輕微陰影提升層級（Material elevated 風格） -->
 
-        <Grid RowDefinitions="Auto,*,Auto">
+        <Grid RowDefinitions="Auto,*,Auto" ColumnDefinitions="*,Auto">
             
-            <!-- 標題 -->
-            <TextBlock Text="{Binding Title}"
-                       FontSize="22"
-                       FontWeight="SemiBold"
-                       Margin="0,0,0,24"
-                       HorizontalAlignment="Left"/>
+            <!-- 頂部標題區域 -->
+            <StackPanel Grid.Row="0" Spacing="8" Margin="0,0,0,32">
+                <TextBlock Text="{Binding Title}"
+                           FontSize="28"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource MaterialForegroundBrush}"
+                           HorizontalAlignment="Left"/>
+                <TextBlock Text="模型詳細資訊"
+                           FontSize="15"
+                           Opacity="0.7"
+                           HorizontalAlignment="Left"/>
+            </StackPanel>
 
-            <!-- 內容區域 -->
+            <!-- 內容 ScrollViewer -->
             <ScrollViewer Grid.Row="1"
                           HorizontalScrollBarVisibility="Disabled"
-                          VerticalScrollBarVisibility="Auto">
+                          VerticalScrollBarVisibility="Auto"
+                          Padding="0,0,8,0">
 
-                <StackPanel Spacing="24">
+                <StackPanel Spacing="32">
 
-                    <!-- 基本資訊 -->
+                    <!-- 1. 基本資訊 Card -->
                     <Border Background="{DynamicResource MaterialCardBackgroundBrush}"
-                            CornerRadius="8"
-                            Padding="20"
+                            CornerRadius="12"
+                            Padding="24"
                             BorderBrush="{DynamicResource MaterialDividerBrush}"
-                            BorderThickness="1">
-                        <StackPanel Spacing="12">
-                            <TextBlock Text="基本資訊" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource MaterialForegroundBrush}"/>
-                            <Grid ColumnDefinitions="140,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" Margin="4,8,0,0">
-                                <TextBlock Text="模型名稱：" Grid.Row="0" Grid.Column="0" FontWeight="SemiBold"/>
+                            BorderThickness="1"
+                            BoxShadow="0 2 8 0 #0F000000">
+
+                        <StackPanel Spacing="20">
+                            <TextBlock Text="基本資訊" 
+                                       FontSize="18" 
+                                       FontWeight="SemiBold"/>
+                            
+                            <Grid ColumnDefinitions="160,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" 
+                                  HorizontalAlignment="Left" Margin="4,0,0,0">
+                                <TextBlock Text="模型名稱" Grid.Row="0" Grid.Column="0" FontWeight="Medium" Opacity="0.85"/>
                                 <TextBlock Text="{Binding ModelInfo.ModelName}" Grid.Row="0" Grid.Column="1" TextWrapping="Wrap"/>
 
-                                <TextBlock Text="模型路徑：" Grid.Row="1" Grid.Column="0" FontWeight="SemiBold"/>
-                                <TextBlock Text="{Binding ModelInfo.ModelPath}" Grid.Row="1" Grid.Column="1" TextWrapping="Wrap"/>
+                                <TextBlock Text="模型路徑" Grid.Row="1" Grid.Column="0" FontWeight="Medium" Opacity="0.85"/>
+                                <TextBlock Text="{Binding ModelInfo.ModelPath}" Grid.Row="1" Grid.Column="1" TextWrapping="Wrap" Foreground="{DynamicResource MaterialSecondaryForegroundBrush}"/>
 
-                                <TextBlock Text="生產者：" Grid.Row="2" Grid.Column="0" FontWeight="SemiBold"/>
+                                <TextBlock Text="生產者" Grid.Row="2" Grid.Column="0" FontWeight="Medium" Opacity="0.85"/>
                                 <TextBlock Text="{Binding ModelInfo.ProducerName}" Grid.Row="2" Grid.Column="1"/>
 
-                                <TextBlock Text="圖形名稱：" Grid.Row="3" Grid.Column="0" FontWeight="SemiBold"/>
+                                <TextBlock Text="圖形名稱" Grid.Row="3" Grid.Column="0" FontWeight="Medium" Opacity="0.85"/>
                                 <TextBlock Text="{Binding ModelInfo.GraphName}" Grid.Row="3" Grid.Column="1"/>
 
-                                <TextBlock Text="檔案大小：" Grid.Row="4" Grid.Column="0" FontWeight="SemiBold"/>
+                                <TextBlock Text="檔案大小" Grid.Row="4" Grid.Column="0" FontWeight="Medium" Opacity="0.85"/>
                                 <TextBlock Text="{Binding ModelInfo.FileSize, StringFormat='{}{0:N0} bytes'}" 
                                            Grid.Row="4" Grid.Column="1"/>
                             </Grid>
                         </StackPanel>
                     </Border>
 
-                    <!-- 輸入張量 -->
+                    <!-- 2. 輸入張量 Card -->
                     <Border Background="{DynamicResource MaterialCardBackgroundBrush}"
-                            CornerRadius="8"
-                            Padding="20"
+                            CornerRadius="12"
+                            Padding="24"
                             BorderBrush="{DynamicResource MaterialDividerBrush}"
                             BorderThickness="1">
-                        <StackPanel Spacing="12">
-                            <TextBlock Text="輸入張量" FontSize="16" FontWeight="SemiBold"/>
-                            <DataGrid ItemsSource="{Binding ModelInfo.Inputs}"
-                                      AutoGenerateColumns="True"
-                                      IsReadOnly="True"
-                                      Height="180"
-                                      GridLinesVisibility="None"/>
+
+                        <StackPanel Spacing="16">
+                            <TextBlock Text="輸入張量" 
+                                       FontSize="18" 
+                                       FontWeight="SemiBold"/>
+                            <Border CornerRadius="8" ClipToBounds="True">
+                                <DataGrid ItemsSource="{Binding ModelInfo.Inputs}"
+                                          AutoGenerateColumns="True"
+                                          IsReadOnly="True"
+                                          Height="200"
+                                          GridLinesVisibility="None"
+                                          BorderThickness="0"
+                                          Background="Transparent"
+                                          CanUserResizeColumns="True"/>
+                            </Border>
                         </StackPanel>
                     </Border>
 
-                    <!-- 輸出張量 -->
+                    <!-- 3. 輸出張量 Card -->
                     <Border Background="{DynamicResource MaterialCardBackgroundBrush}"
-                            CornerRadius="8"
-                            Padding="20"
+                            CornerRadius="12"
+                            Padding="24"
                             BorderBrush="{DynamicResource MaterialDividerBrush}"
                             BorderThickness="1">
-                        <StackPanel Spacing="12">
-                            <TextBlock Text="輸出張量" FontSize="16" FontWeight="SemiBold"/>
-                            <DataGrid ItemsSource="{Binding ModelInfo.Outputs}"
-                                      AutoGenerateColumns="True"
-                                      IsReadOnly="True"
-                                      Height="180"
-                                      GridLinesVisibility="None"/>
+
+                        <StackPanel Spacing="16">
+                            <TextBlock Text="輸出張量" 
+                                       FontSize="18" 
+                                       FontWeight="SemiBold"/>
+                            <Border CornerRadius="8" ClipToBounds="True">
+                                <DataGrid ItemsSource="{Binding ModelInfo.Outputs}"
+                                          AutoGenerateColumns="True"
+                                          IsReadOnly="True"
+                                          Height="200"
+                                          GridLinesVisibility="None"
+                                          BorderThickness="0"
+                                          Background="Transparent"
+                                          CanUserResizeColumns="True"/>
+                            </Border>
                         </StackPanel>
                     </Border>
 
-                    <!-- 自訂元數據 -->
+                    <!-- 4. 自訂元數據 Card -->
                     <Border Background="{DynamicResource MaterialCardBackgroundBrush}"
-                            CornerRadius="8"
-                            Padding="20"
+                            CornerRadius="12"
+                            Padding="24"
                             BorderBrush="{DynamicResource MaterialDividerBrush}"
                             BorderThickness="1">
-                        <StackPanel Spacing="12">
-                            <TextBlock Text="自訂元數據" FontSize="16" FontWeight="SemiBold"/>
-                            <DataGrid ItemsSource="{Binding ModelInfo.CustomMetadata}"
-                                      AutoGenerateColumns="True"
-                                      IsReadOnly="True"
-                                      Height="160"
-                                      GridLinesVisibility="None"/>
+
+                        <StackPanel Spacing="16">
+                            <TextBlock Text="自訂元數據" 
+                                       FontSize="18" 
+                                       FontWeight="SemiBold"/>
+                            <Border CornerRadius="8" ClipToBounds="True">
+                                <DataGrid ItemsSource="{Binding ModelInfo.CustomMetadata}"
+                                          AutoGenerateColumns="True"
+                                          IsReadOnly="True"
+                                          Height="180"
+                                          GridLinesVisibility="None"
+                                          BorderThickness="0"
+                                          Background="Transparent"
+                                          CanUserResizeColumns="True"/>
+                            </Border>
                         </StackPanel>
                     </Border>
 
@@ -111,12 +149,15 @@
 
             <!-- 底部關閉按鈕 -->
             <Button Grid.Row="2"
+                    Grid.Column="1"
                     Content="關閉"
                     HorizontalAlignment="Right"
-                    Margin="0,20,0,0"
-                    Padding="32,10"
+                    Margin="0,32,0,0"
+                    Padding="40,12"
+                    MinWidth="140"
                     Command="{Binding CloseCommand}"
-                    Classes="flat"/>
+                    Classes="filled-tonal"/> <!-- 或 "elevated" / "outlined" 看你喜歡的風格 -->
+
         </Grid>
     </Border>
 </UserControl>
