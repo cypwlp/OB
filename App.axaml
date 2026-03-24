@@ -1,25 +1,38 @@
 <prism:PrismApplication xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="OB.App"   
+             x:Class="OB.App"
              xmlns:prism="http://prismlibrary.com/"
              xmlns:dialogHostAvalonia="using:DialogHostAvalonia"
              xmlns:converters="using:OB.Tools.Converters"
              xmlns:themes="clr-namespace:Material.Styles.Themes;assembly=Material.Styles"
              xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              RequestedThemeVariant="Default">
+
     <Application.Resources>
         <converters:BoolToSizeConverter x:Key="BoolToSizeConverter"/>
         <converters:BoolToAlignmentConverter x:Key="BoolToAlignmentConverter"/>
         <converters:BoolToMenuIconConverter x:Key="BoolToMenuIconConverter"/>
         <converters:ObjectEqualityConverter x:Key="ObjectEqualityConverter"/>
-		<converters:BoolToMenuIconConverter x:Key="BoolToIconConverter"/>
+        <converters:BoolToMenuIconConverter x:Key="BoolToIconConverter"/>
+
+        <!-- 自訂 Material 刷子（讓色彩更豐富） -->
+        <SolidColorBrush x:Key="MaterialCardBackgroundBrush" Color="#FFFCFCFF" />
+        <SolidColorBrush x:Key="MaterialAltBackgroundBrush" Color="#F0F4FF" />
+        <SolidColorBrush x:Key="MaterialHoverBackgroundBrush" Color="#E0E7FF" />
+        <SolidColorBrush x:Key="MaterialDividerBrush" Color="#E0E0E0" />
+        <SolidColorBrush x:Key="MaterialSecondaryForegroundBrush" Color="#6B7280" />
     </Application.Resources>
-  
+
     <Application.Styles>
-        <themes:MaterialTheme BaseTheme="Light" PrimaryColor="Indigo" SecondaryColor="Amber" />
-		<StyleInclude Source="avares://DialogHost.Avalonia/Styles.xaml"/>
-<materialIcons:MaterialIconStyles />
-       <Style Selector="Window, UserControl">
+        <!-- 推薦配色：DeepPurple + Teal（豐富且優雅） -->
+        <themes:MaterialTheme BaseTheme="Light" 
+                              PrimaryColor="DeepPurple" 
+                              SecondaryColor="Teal" />
+
+        <StyleInclude Source="avares://DialogHost.Avalonia/Styles.xaml"/>
+        <materialIcons:MaterialIconStyles />
+
+        <Style Selector="Window, UserControl">
             <Setter Property="FontFamily" Value="Microsoft YaHei, Segoe UI, sans-serif" />
         </Style>
     </Application.Styles>
