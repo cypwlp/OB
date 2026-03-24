@@ -17,9 +17,7 @@
         <Grid RowDefinitions="Auto,Auto,*">
             
             <!-- 標題 + 搜尋框 -->
-            <DockPanel Grid.Row="0" Margin="24,20,24,16">
-
-                
+            <DockPanel Grid.Row="0" Margin="24,20,24,16">                
                 <TextBox Name="SearchBox"
                          DockPanel.Dock="Left"
                          HorizontalAlignment="Left"
